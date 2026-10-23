@@ -51,6 +51,7 @@ Node.js 18.18 ou plus récent.
 | Fichier | Usage | À remplacer par |
 | --- | --- | --- |
 | `demo-provisoire.mp4` | Vidéo en boucle de l'accueil | Bande démo VATEA (MP4, 15–30 s, sans son, < 10 Mo idéalement) — même nom de fichier |
+| `demo-poster.jpg` | Image affichée le temps que la vidéo démarre | Première image de la nouvelle vidéo (même nom) |
 | `hero-portfolio.jpg`, `hero-blog.jpg` | Hauts de pages Portfolio et Blog | — |
 | `fond-formulaire.jpg` | Fond du formulaire | — |
 | `logo-va.png` | Logo (menu, pied de page, icône d'onglet) | Version SVG si disponible |
@@ -58,12 +59,19 @@ Node.js 18.18 ou plus récent.
 Pour remplacer un emplacement rayé par une vraie image : remplacer le composant `<Placeholder … />` correspondant
 par `<Image src="/media/ma-photo.jpg" alt="description" width={…} height={…} />` (import `next/image`).
 
+## Images
+
+Les photos de fond sont importées dans le code (`import … from '@/public/media/…'`) : un aperçu flou s'affiche
+instantanément, puis Vercel sert une version WebP adaptée à l'écran. Le tout premier affichage après une mise en ligne
+prend un peu plus de temps (Vercel prépare les versions), ensuite elles sont en cache 31 jours.
+
 ## Formulaire de devis
 
 - Validation côté navigateur et côté serveur, champ piège anti-spam.
 - Sans configuration : chaque demande est enregistrée dans les **logs Vercel** (Project > Logs, recherche `[devis]`).
-- Pour créer automatiquement un **prospect dans Dolibarr** : ajouter dans Vercel > Settings > Environment Variables
-  `DOLIBARR_URL` (ex. `https://crm.vatea.be`) et `DOLIBARR_API_KEY` (clé d'un compte de service limité à la création de tiers), puis redéployer.
+- Pour envoyer automatiquement chaque demande dans le **CRM VATEA** (colonne « Nouveau », source « Formulaire du site ») :
+  ajouter dans Vercel > Settings > Environment Variables `CRM_URL` (`https://crm.vatea.be`) et `CRM_LEADS_KEY`
+  (la même valeur que `LEADS_API_KEY` dans le projet CRM), puis redéployer.
 - **Reste à faire** : notification e-mail à Hugo et accusé de réception au prospect (choisir un service d'envoi, ex. Resend ou Brevo).
 
 ## Reste à compléter avant la mise en ligne officielle

@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import heroPortfolio from '@/public/media/hero-portfolio.jpg';
 import CtaBox from '@/components/CtaBox';
 import Placeholder from '@/components/Placeholder';
 
@@ -33,7 +34,7 @@ export default function PortfolioPage() {
   return (
     <>
       <section className="hero-photo" aria-labelledby="titre-portfolio">
-        <Image src="/media/hero-portfolio.jpg" alt="" fill priority sizes="100vw" className="bg" style={{ objectPosition: '70% 50%', '--mpos': '80% 45%' }} />
+        <Image src={heroPortfolio} placeholder="blur" quality={70} alt="" fill priority sizes="100vw" className="bg" style={{ objectPosition: '70% 50%', '--mpos': '80% 45%' }} />
         <div className="fade-x" aria-hidden="true" />
         <div className="fade-y" aria-hidden="true" />
         <div className="container content">

@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import heroBlog from '@/public/media/hero-blog.jpg';
 import BlogList from '@/components/BlogList';
 import { getArticles } from '@/lib/blog';
 
@@ -13,7 +14,7 @@ export default function BlogPage() {
   return (
     <>
       <section className="hero-photo" aria-labelledby="titre-blog" style={{ minHeight: 640, height: '84vh', maxHeight: 880 }}>
-        <Image src="/media/hero-blog.jpg" alt="" fill priority sizes="100vw" className="bg" style={{ objectPosition: '75% 55%', '--mpos': '68% 60%' }} />
+        <Image src={heroBlog} placeholder="blur" quality={70} alt="" fill priority sizes="100vw" className="bg" style={{ objectPosition: '75% 55%', '--mpos': '68% 60%' }} />
         <div className="fade-x" aria-hidden="true" />
         <div className="fade-y" aria-hidden="true" />
         <div className="container content">

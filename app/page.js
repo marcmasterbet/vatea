@@ -31,7 +31,7 @@ export default function HomePage() {
 
       {/* HERO : vidéo en boucle (provisoire, à remplacer par la bande démo) */}
       <section className="hero-video" aria-labelledby="titre-hero">
-        <video src="/media/demo-provisoire.mp4" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />
+        <video src="/media/demo-provisoire.mp4" poster="/media/demo-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-hidden="true" />
         <div className="veil" aria-hidden="true" />
         <div className="container content">
           <span className="rule rule-lg" aria-hidden="true" />

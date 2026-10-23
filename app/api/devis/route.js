@@ -10,7 +10,8 @@ function clean(v, max = 2000) {
 /**
  * Réception d'une demande de devis.
  * - validation côté serveur + champ piège anti-spam ;
- * - si DOLIBARR_URL et DOLIBARR_API_KEY sont définis, création d'un prospect dans le CRM ;
+ * - si CRM_URL et CRM_LEADS_KEY sont définis, création d'un prospect dans le CRM VATEA (crm.vatea.be) ;
+ * - (ancienne option) DOLIBARR_URL et DOLIBARR_API_KEY pour Dolibarr ;
  * - sinon, la demande est journalisée (visible dans Vercel > Logs).
  * TODO : notification e-mail à Hugo et message de confirmation au prospect (service d'envoi à choisir).
  */
@@ -50,8 +51,22 @@ export async function POST(request) {
     d.telephone && `Téléphone : ${d.telephone}`,
   ].filter(Boolean).join('\n');
 
-  const { DOLIBARR_URL, DOLIBARR_API_KEY } = process.env;
-  if (DOLIBARR_URL && DOLIBARR_API_KEY) {
+  const { CRM_URL, CRM_LEADS_KEY, DOLIBARR_URL, DOLIBARR_API_KEY } = process.env;
+  if (CRM_URL && CRM_LEADS_KEY) {
+    // CRM VATEA (crm.vatea.be) : le prospect arrive dans la colonne « Nouveau »
+    try {
+      const res = await fetch(`${CRM_URL.replace(/\/$/, '')}/api/leads`, {
+        method: 'POST',
+        headers: { 'x-crm-key': CRM_LEADS_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify(d),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`CRM HTTP ${res.status}`);
+    } catch (err) {
+      // Reprise manuelle possible : la demande complète reste dans les logs
+      console.error('[devis] CRM indisponible', err.message, JSON.stringify(d));
+    }
+  } else if (DOLIBARR_URL && DOLIBARR_API_KEY) {
     try {
       const res = await fetch(`${DOLIBARR_URL.replace(/\/$/, '')}/api/index.php/thirdparties`, {
         method: 'POST',

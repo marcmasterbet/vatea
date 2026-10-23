@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import fondFormulaire from '@/public/media/fond-formulaire.jpg';
 import { CONTACT } from '@/lib/site';
 import DevisForm from './DevisForm';
 import { IconMail, IconPhone } from './Icons';
@@ -6,7 +7,7 @@ import { IconMail, IconPhone } from './Icons';
 export default function DevisSection() {
   return (
     <section id="contact" className="devis" aria-labelledby="titre-devis">
-      <Image src="/media/fond-formulaire.jpg" alt="" fill sizes="100vw" className="bg" style={{ objectPosition: '75% 55%' }} />
+      <Image src={fondFormulaire} placeholder="blur" quality={70} alt="" fill sizes="100vw" className="bg" style={{ objectPosition: '75% 55%' }} />
       <div className="fade-x" aria-hidden="true" />
       <div className="fade-y" aria-hidden="true" />
       <div className="container content">
