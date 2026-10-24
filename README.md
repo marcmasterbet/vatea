@@ -79,6 +79,10 @@ Parcours complet du cahier des charges : prospect → devis envoyé → devis si
 Comptes : Hugo (saisie), Jeff et Marc (contrôle, lecture seule), Administrateur (comptes, statut des commissions).
 Page Commissions : bloc « Ma commission » (déjà réglé, à recevoir, en contrôle, à venir, total prévu), détail par dossier,
 et « Enregistrer un règlement » (admin) : les lignes payées passent en « Réglée », sont figées et sortent du reste à payer.
+Calcul : 16 % / 9 % du **montant HT signé et encaissé**. La part HT de chaque paiement est tirée de sa facture (TVA 21 %, 12 %, 6 %
+ou 0 % en autoliquidation), le paiement qui solde une facture reprend exactement le HT restant, et la base est plafonnée au HT
+du devis signé (alerte « facturé au-delà du devis signé »).
+Bouton « 📧 Simuler la campagne » : les prospects « Nouveau » passent automatiquement en « Contacté » (comme le fera l'outil de campagne).
 Fichiers : `public/demo-crm/` (index.html, demo.js, demo.css, polices). Non indexée par Google.
 
 ## Images

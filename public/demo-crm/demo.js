@@ -21,7 +21,7 @@
   var ETAPE = {};
   ETAPES.forEach(function (e, i) { e.rang = i; ETAPE[e.id] = e; });
 
-  var SOURCES = ['Formulaire du site', 'Apport JEGO', 'Apport EI BRETZNER MARC', 'Recommandation', 'Réseau / LinkedIn / Instagram', 'Salon / événement', 'Prospection directe', 'Autre'];
+  var SOURCES = ['Formulaire du site', 'Apport JEGO', 'Apport EI BRETZNER MARC', 'Recommandation', 'Réseau / LinkedIn / Instagram', 'Salon / événement', 'Prospection de Hugo', 'Campagne e-mail', 'Autre'];
   var TYPES_VIDEO = ['Vidéo corporate', 'Vidéo publicitaire', 'Vidéo de formation', 'Autre'];
   var TYPES_PREUVE = ['Devis signé (PDF)', 'Bon de commande', 'Contrat', 'Accord par e-mail', 'Signature électronique'];
   var ROLES = { admin: 'Administrateur', gerant: 'Gérant', commercial: 'Commercial', controle: 'Contrôle' };
@@ -88,7 +88,7 @@
           devis: { ref: 'DEV-2026-009', dateEnvoi: '2026-09-04', montantHt: 4500, dateSignature: '2026-09-15', typePreuve: 'Bon de commande', fichierPreuve: 'bon-commande-campus.pdf' } }),
         P({ id: 8, entreprise: 'Laboratoire Exemple (fictif)', contact: 'Prof. Anne Gilson', telephone: '+32 10 55 08 80', typeVideo: 'Vidéo corporate', source: 'Recommandation', sourceVerrouillee: true, etape: 'paye', creeLe: '2026-03-20',
           devis: { ref: 'DEV-2026-003', dateEnvoi: '2026-03-30', montantHt: 6000, dateSignature: '2026-04-10', typePreuve: 'Devis signé (PDF)', fichierPreuve: 'devis-003-signe.pdf' }, notes: 'Exemple chiffré du cahier des charges (§ 10.1) : acompte, solde puis remboursement de 1 000 € HT.' }),
-        P({ id: 9, entreprise: 'Boulangerie Lefèvre (fictif)', contact: 'Anne Lefèvre', telephone: '+32 2 555 09 90', typeVideo: 'Vidéo publicitaire', source: 'Prospection directe', sourceVerrouillee: true, etape: 'paye', creeLe: '2026-01-15',
+        P({ id: 9, entreprise: 'Boulangerie Lefèvre (fictif)', contact: 'Anne Lefèvre', telephone: '+32 2 555 09 90', typeVideo: 'Vidéo publicitaire', source: 'Prospection de Hugo', sourceVerrouillee: true, etape: 'paye', creeLe: '2026-01-15',
           devis: { ref: 'DEV-2026-001', dateEnvoi: '2026-01-28', montantHt: 3000, dateSignature: '2026-02-10', typePreuve: 'Devis signé (PDF)', fichierPreuve: 'devis-001-signe.pdf' }, notes: 'Signé avant la mise en ligne : non éligible aux commissions (§ 10).' }),
         P({ id: 10, entreprise: 'Studio Kiné Namur (fictif)', contact: 'Lucas Martin', typeVideo: 'Vidéo de formation', source: 'Formulaire du site', etape: 'perdu', raisonPerte: 'Budget reporté à 2027', creeLe: '2026-09-02' })
       ],
@@ -122,7 +122,16 @@
   /* ───────────── État ───────────── */
   var S;
   function charger() {
-    try { var t = localStorage.getItem(CLE); if (t) { var o = JSON.parse(t); if (o && o.v === 2) return o; } } catch (e) { /* stockage indisponible */ }
+    try {
+      var t = localStorage.getItem(CLE);
+      if (t) {
+        var o = JSON.parse(t);
+        if (o && o.v === 2) {
+          o.prospects.forEach(function (p) { if (p.source === 'Prospection directe') p.source = 'Prospection de Hugo'; }); // renommage du 24/10
+          return o;
+        }
+      }
+    } catch (e) { /* stockage indisponible */ }
     return etatInitial();
   }
   function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* démo sans sauvegarde */ } }
@@ -139,7 +148,10 @@
   function facture(id) { return S.factures.find(function (f) { return f.id === id; }); }
   function facturesDe(pid) { return S.factures.filter(function (f) { return f.prospectId === pid; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; }); }
   function encDe(fid) { return S.encaissements.filter(function (e) { return e.factureId === fid; }).sort(function (a, b) { return a.date < b.date ? -1 : 1; }); }
-  function ttcF(f) { return r2(f.ht * (1 + TVA)); }
+  function tauxTva(f) { return f.tva == null ? TVA : f.tva; }
+  function ttcF(f) { return r2(f.ht * (1 + tauxTva(f))); }
+  /** Part HT restant à encaisser sur une facture (selon son propre HT / TTC). */
+  function resteHtFacture(f) { var t = ttcF(f); return t ? r2(Math.max(0, (t - encaisse(f.id))) * f.ht / t) : 0; }
   function encaisse(fid) { return r2(encDe(fid).reduce(function (s, e) { return s + e.ttc; }, 0)); }
   function statutPaiement(f) {
     var due = ttcF(f), recu = encaisse(f.id);
@@ -158,34 +170,55 @@
     if (d >= fin()) return { ok: false, raison: 'Signé après la période' };
     return { ok: true, raison: 'Éligible' };
   }
-  function journaliser(action, pid, details) {
+  function journaliser(action, pid, details, auteur) {
     var m = moi();
-    S.journal.unshift({ le: maintenant(), auteur: m ? m.nom : 'Système', action: action, pid: pid || null, details: details || '' });
+    S.journal.unshift({ le: maintenant(), auteur: auteur || (m ? m.nom : 'Système'), action: action, pid: pid || null, details: details || '' });
   }
 
+  /**
+   * Base de commission = part HT réellement encaissée, plafonnée au HT du devis signé.
+   * - La part HT d'un paiement vient de la facture : montant payé × HT facture / TTC facture
+   *   (gère la TVA 21 %, 12 %, 6 % ou 0 % en autoliquidation).
+   * - Le paiement qui solde la facture reprend exactement le HT restant : la somme tombe juste au centime.
+   * - Au-delà du HT signé (travaux facturés sans devis signé), pas de commission.
+   */
   function lignesCommission() {
+    var parFacture = {}, parDossier = {};
     return S.encaissements.slice().sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : (a.id < b.id ? -1 : 1); }).map(function (e) {
-      var f = facture(e.factureId), p = prospect(f.prospectId), el = eligibilite(p);
-      var ht = r2(e.ttc / (1 + TVA));
-      return { e: e, f: f, p: p, el: el, ht: ht, j: el.ok ? r2(ht * TAUX_J) : 0, m: el.ok ? r2(ht * TAUX_M) : 0 };
+      var f = facture(e.factureId), p = prospect(f.prospectId), el = eligibilite(p), t = ttcF(f);
+      var cf = parFacture[f.id] || (parFacture[f.id] = { ttc: 0, ht: 0 });
+      cf.ttc = r2(cf.ttc + e.ttc);
+      var ht = Math.abs(cf.ttc - t) < 0.005 ? r2(f.ht - cf.ht) : r2(t ? e.ttc * f.ht / t : e.ttc);
+      cf.ht = r2(cf.ht + ht);
+      var base = ht, hors = 0;
+      if (el.ok && p.devis) {
+        var cumul = parDossier[p.id] || 0, plafond = p.devis.montantHt;
+        if (ht > 0) { base = r2(Math.max(0, Math.min(ht, plafond - cumul))); hors = r2(ht - base); }
+        parDossier[p.id] = r2(cumul + base);
+      }
+      return { e: e, f: f, p: p, el: el, ht: ht, base: base, hors: hors, j: el.ok ? r2(base * TAUX_J) : 0, m: el.ok ? r2(base * TAUX_M) : 0 };
     });
   }
+  function baseHtEncaissement(id) { var l = lignesCommission().find(function (x) { return x.e.id === id; }); return l ? l.ht : 0; }
   /** Ce que chaque bénéficiaire a touché, va toucher, et pourrait toucher si les clients paient. */
   function resumeCommissions() {
     var acq = { reglee: 0, aRecevoir: 0, controle: 0, regul: 0 };
     lignesCommission().forEach(function (l) {
       if (!l.el.ok) return;
       var k = l.e.statut === 'reglee' ? 'reglee' : (l.e.statut === 'validee' || l.e.statut === 'facturee') ? 'aRecevoir' : l.e.statut === 'regularisee' ? 'regul' : 'controle';
-      acq[k] = r2(acq[k] + l.ht);
+      acq[k] = r2(acq[k] + l.base);
     });
     var dossiers = S.prospects.filter(function (p) { return p.etape !== 'perdu' && eligibilite(p).ok; }).map(function (p) {
       var fs = facturesDe(p.id);
       var factureHt = r2(fs.filter(function (f) { return !f.avoir; }).reduce(function (t, f) { return t + f.ht; }, 0));
       var avoirsHt = r2(fs.filter(function (f) { return f.avoir; }).reduce(function (t, f) { return t + f.ht; }, 0));
-      var encHt = r2(lignesCommission().filter(function (l) { return l.p.id === p.id; }).reduce(function (t, l) { return t + l.ht; }, 0));
-      var resteFactHt = r2(Math.max(0, resteDu(p)) / (1 + TVA));
+      var lp = lignesCommission().filter(function (l) { return l.p.id === p.id; });
+      var encHt = r2(lp.reduce(function (t, l) { return t + l.ht; }, 0));
+      var baseAcq = r2(lp.reduce(function (t, l) { return t + l.base; }, 0));
+      var resteFactHt = r2(fs.filter(function (f) { return !f.avoir; }).reduce(function (t, f) { return t + resteHtFacture(f); }, 0));
       var nonFact = r2(Math.max(0, p.devis.montantHt - factureHt));
-      return { p: p, devisHt: p.devis.montantHt, factureHt: r2(factureHt + avoirsHt), encHt: encHt, resteFactHt: resteFactHt, nonFact: nonFact, aVenirHt: r2(resteFactHt + nonFact) };
+      var aVenirBrut = r2(resteFactHt + nonFact), plafondRestant = r2(Math.max(0, p.devis.montantHt - baseAcq));
+      return { p: p, devisHt: p.devis.montantHt, factureHt: r2(factureHt + avoirsHt), encHt: encHt, baseAcq: baseAcq, resteFactHt: resteFactHt, nonFact: nonFact, aVenirHt: r2(Math.min(aVenirBrut, plafondRestant)) };
     });
     var aVenir = r2(dossiers.reduce(function (t, d) { return t + d.aVenirHt; }, 0));
     var pour = function (taux) {
@@ -202,6 +235,11 @@
     S.prospects.forEach(function (p) {
       if (p.devis && p.devis.dateSignature && p.etape !== 'perdu' && !facturesDe(p.id).some(function (f) { return !f.avoir; }))
         a.push({ sev: 'var(--orange, #e8a15a)', titre: 'Devis signé sans facture', texte: p.entreprise + ' — ' + p.devis.ref + ' (' + eur0(p.devis.montantHt) + ' HT, signé le ' + dfr(p.devis.dateSignature) + ')', pid: p.id });
+    });
+    S.prospects.forEach(function (p) {
+      if (!p.devis || !p.devis.dateSignature) return;
+      var fact = r2(facturesDe(p.id).filter(function (f) { return !f.avoir; }).reduce(function (t, f) { return t + f.ht; }, 0));
+      if (fact > p.devis.montantHt + 0.005) a.push({ sev: '#e8a15a', titre: 'Facturé au-delà du devis signé', texte: p.entreprise + ' : ' + eur(fact) + ' HT facturés pour ' + eur(p.devis.montantHt) + ' HT signés — l’excédent (' + eur(r2(fact - p.devis.montantHt)) + ') n’est commissionné qu’avec un avenant signé (§ 10.2)', pid: p.id });
     });
     S.factures.forEach(function (f) {
       if (f.avoir) return;
@@ -331,16 +369,17 @@
       champs: [
         { k: 'numero', label: avoir ? 'N° d’avoir' : 'N° de facture', req: true, demi: true, val: (avoir ? 'AV-2026-0' : 'FA-2026-0') + (30 + S.seq.f) },
         { k: 'date', label: 'Date', type: 'date', req: true, demi: true, val: auj(), max: auj() },
-        { k: 'ht', label: 'Montant HT (€)' + (avoir ? ' — positif, il sera déduit' : ''), req: true, mode: 'decimal', val: base > 0 ? base : '', aide: 'TVA 21 % calculée automatiquement.' },
+        { k: 'ht', label: 'Montant HT (€)' + (avoir ? ' — positif, il sera déduit' : ''), req: true, demi: true, mode: 'decimal', val: base > 0 ? base : '' },
+        { k: 'tva', label: 'TVA', type: 'select', req: true, demi: true, options: ['21 %', '12 %', '6 %', '0 % (autoliquidation)'], val: '21 %' },
         { k: 'fichier', label: 'PDF', type: 'file' }
       ],
       onOk: function (v) {
         var m = montant(v.ht);
         if (!(m > 0)) return 'Montant HT invalide.';
         if (S.factures.some(function (f) { return f.numero === v.numero; })) return 'Ce numéro existe déjà.';
-        var f = { id: 'f' + S.seq.f++, numero: v.numero, prospectId: p.id, date: v.date, ht: avoir ? -m : m, avoir: !!avoir, fichier: v.fichier };
+        var f = { id: 'f' + S.seq.f++, numero: v.numero, prospectId: p.id, date: v.date, ht: avoir ? -m : m, tva: parseInt(v.tva, 10) / 100, avoir: !!avoir, fichier: v.fichier };
         S.factures.push(f);
-        journaliser(avoir ? 'Avoir enregistré' : 'Facture enregistrée', p.id, f.numero + ' — ' + eur(f.ht) + ' HT (' + eur(ttcF(f)) + ' TTC)');
+        journaliser(avoir ? 'Avoir enregistré' : 'Facture enregistrée', p.id, f.numero + ' — ' + eur(f.ht) + ' HT, TVA ' + v.tva + ' (' + eur(ttcF(f)) + ' TTC)');
         if (!avoir && ETAPE[p.etape].rang < ETAPE.facture.rang) { p.etape = 'facture'; journaliser('Étape changée', p.id, '→ Facturé'); }
         sauver(); o_apres = suite; return null;
       }
@@ -429,7 +468,8 @@
     return '<button type="button" class="carte" data-act="fiche" data-id="' + p.id + '"' + (w ? ' draggable="true"' : '') + '>' +
       '<h3>' + esc(p.entreprise) + '</h3>' + (p.contact ? '<p class="contact">' + esc(p.contact) + '</p>' : '') +
       '<div class="ligne">' + (p.typeVideo ? '<span class="puce">' + esc(p.typeVideo.replace('Vidéo ', '')) + '</span>' : '') +
-      '<span class="puce or" title="' + (p.sourceVerrouillee ? 'Source verrouillée' : 'Source') + '">' + (p.sourceVerrouillee ? '🔒 ' : '') + esc(p.source) + '</span></div>' +
+      '<span class="puce or" title="' + (p.sourceVerrouillee ? 'Source verrouillée' : 'Source') + '">' + (p.sourceVerrouillee ? '🔒 ' : '') + esc(p.source) + '</span>' +
+      (p.campagneLe ? '<span class="puce" title="Contacté par la campagne automatique le ' + esc(dfr(p.campagneLe) + p.campagneLe.slice(10)) + '">📧 Campagne</span>' : '') + '</div>' +
       '<div class="ligne">' + (p.relance && ['paye', 'perdu'].indexOf(p.etape) < 0 ? '<span class="puce' + (retard ? ' alerte' : '') + '" title="Prochaine relance">⏰ ' + dcourt(p.relance) + '</span>' : '') +
       (p.etape === 'facture' ? '<span class="puce alerte" title="Reste dû">Reste ' + eur0(resteDu(p)) + '</span>' : '') +
       '<span class="montant">' + (m != null ? eur0(m) : '') + '</span></div></button>';
@@ -452,7 +492,7 @@
     h += '<div class="barre"><div class="bascule" role="group" aria-label="Affichage"><button type="button" data-act="mode" data-mode="kanban" class="' + (ui.mode === 'kanban' ? 'on' : '') + '">Kanban</button><button type="button" data-act="mode" data-mode="liste" class="' + (ui.mode === 'liste' ? 'on' : '') + '">Liste</button></div>' +
       '<input class="champ recherche" type="search" placeholder="Rechercher…" value="' + esc(ui.q) + '" data-input="q" aria-label="Rechercher" />' +
       '<select class="champ" data-input="source" aria-label="Source"><option value="">Toutes les sources</option>' + SOURCES.map(function (s) { return '<option' + (ui.source === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>' +
-      '<div class="droite"><button type="button" class="btn" data-act="export-prospects">Exporter</button>' + (w ? '<button type="button" class="btn btn-or" data-act="nouveau">+ Nouveau prospect</button>' : '') + '</div></div>';
+      '<div class="droite">' + (w ? '<button type="button" class="btn" data-act="campagne" title="Simule l’outil de campagne e-mail qui prévient le CRM à chaque envoi">📧 Simuler la campagne</button>' : '') + '<button type="button" class="btn" data-act="export-prospects">Exporter</button>' + (w ? '<button type="button" class="btn btn-or" data-act="nouveau">+ Nouveau prospect</button>' : '') + '</div></div>';
     if (ui.mode === 'kanban') {
       h += '<div class="kanban' + (ui.perduOuvert ? '' : ' avec-perdu-replie') + '">';
       ETAPES.filter(function (e) { return e.id !== 'perdu'; }).forEach(function (e) {
@@ -495,10 +535,10 @@
           '<td class="num">' + eur(f.ht) + '</td><td class="num">' + eur(du) + '</td><td class="num">' + eur(recu) + '</td><td><span class="pastille ' + sp.cl + '">' + sp.t + '</span></td>' +
           '<td>' + (peut ? '<button type="button" class="btn btn-petit" data-act="encaisser" data-f="' + f.id + '">' + (f.avoir ? '+ Remboursement' : '+ Encaissement') + '</button>' : '') + '</td></tr>';
       }).join('') + '</tbody><tfoot><tr><td colspan="4">Total</td><td class="num">' + eur(totTtc) + '</td><td class="num">' + eur(totRecu) + '</td><td colspan="2"></td></tr></tfoot></table></div>';
-    h += '<h2 class="sous-titre">Mouvements déclarés</h2><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Date</th><th>Référence</th><th>Facture</th><th>Client</th><th class="num">TTC</th><th class="num">Base HT</th><th>Extrait bancaire</th><th></th></tr></thead><tbody>' +
+    h += '<h2 class="sous-titre">Mouvements déclarés</h2><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Date</th><th>Référence</th><th>Facture</th><th>Client</th><th class="num">Payé TTC</th><th class="num">Part HT</th><th>Extrait bancaire</th><th></th></tr></thead><tbody>' +
       S.encaissements.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }).map(function (e) {
         var f = facture(e.factureId), p = prospect(f.prospectId);
-        return '<tr><td>' + dfr(e.date) + '</td><td>' + esc(e.reference) + '</td><td>' + esc(f.numero) + '</td><td>' + esc(p.entreprise) + '</td><td class="num">' + eur(e.ttc) + '</td><td class="num">' + eur(r2(e.ttc / (1 + TVA))) + '</td>' +
+        return '<tr><td>' + dfr(e.date) + '</td><td>' + esc(e.reference) + '</td><td>' + esc(f.numero) + '</td><td>' + esc(p.entreprise) + '</td><td class="num">' + eur(e.ttc) + '</td><td class="num">' + eur(baseHtEncaissement(e.id)) + '</td>' +
           '<td>' + (e.justificatif ? '<span class="fichier">📎 ' + esc(e.justificatif) + '</span>' : '<span class="fichier manquant">Manquant</span>') + '</td>' +
           '<td>' + (!e.justificatif && w ? '<button type="button" class="btn btn-petit" data-act="joindre" data-e="' + e.id + '">Joindre</button>' : '') + '</td></tr>';
       }).join('') + '</tbody></table></div>';
@@ -511,22 +551,22 @@
     var moisDispo = Array.from(new Set(toutes.map(function (l) { return l.e.date.slice(0, 7); }))).sort().reverse();
     var L = toutes.filter(function (l) { return !ui.mois || l.e.date.slice(0, 7) === ui.mois; });
     var el = L.filter(function (l) { return l.el.ok; });
-    var tHt = r2(el.reduce(function (s, l) { return s + l.ht; }, 0)), tJ = r2(el.reduce(function (s, l) { return s + l.j; }, 0)), tM = r2(el.reduce(function (s, l) { return s + l.m; }, 0));
+    var tHt = r2(el.reduce(function (s, l) { return s + l.base; }, 0)), tJ = r2(el.reduce(function (s, l) { return s + l.j; }, 0)), tM = r2(el.reduce(function (s, l) { return s + l.m; }, 0));
     var aVerif = el.filter(function (l) { return l.e.statut === 'a_verifier'; }).length;
     var nonReg = toutes.filter(function (l) { return l.el.ok && l.e.statut !== 'reglee'; }), dejaReg = toutes.filter(function (l) { return l.el.ok && l.e.statut === 'reglee'; });
     var rJ = r2(nonReg.reduce(function (s, l) { return s + l.j; }, 0)), rM = r2(nonReg.reduce(function (s, l) { return s + l.m; }, 0));
     var dR = r2(dejaReg.reduce(function (s, l) { return s + l.j + l.m; }, 0));
     var Lv = L.filter(function (l) { return ui.voirReglees || l.e.statut !== 'reglee'; });
     var elv = Lv.filter(function (l) { return l.el.ok; });
-    tHt = r2(elv.reduce(function (s, l) { return s + l.ht; }, 0)); tJ = r2(elv.reduce(function (s, l) { return s + l.j; }, 0)); tM = r2(elv.reduce(function (s, l) { return s + l.m; }, 0));
+    tHt = r2(elv.reduce(function (s, l) { return s + l.base; }, 0)); tJ = r2(elv.reduce(function (s, l) { return s + l.j; }, 0)); tM = r2(elv.reduce(function (s, l) { return s + l.m; }, 0));
     var nbCach = L.length - Lv.length;
     var al = alertes();
-    var h = '<div class="tete-page"><div><h1>Commissions</h1><p>' + (m.id === 'jeff' ? 'Votre commission JEGO : 16 % du HT encaissé' : m.id === 'marc' ? 'Votre commission EI BRETZNER MARC : 9 % du HT encaissé' : 'JEGO 16 % et EI BRETZNER MARC 9 % du HT réellement encaissé') + '</p></div>' +
+    var h = '<div class="tete-page"><div><h1>Commissions</h1><p>' + (m.id === 'jeff' ? 'Votre commission JEGO : 16 % du montant HT signé et encaissé' : m.id === 'marc' ? 'Votre commission EI BRETZNER MARC : 9 % du montant HT signé et encaissé' : 'JEGO 16 % et EI BRETZNER MARC 9 % du montant HT signé et encaissé') + '</p></div>' +
       '<div class="kpis">' + (m.id !== 'marc' ? '<div class="kpi"><span>Reste à payer JEGO</span><b class="or">' + eur(rJ) + '</b></div>' : '') +
       (m.id !== 'jeff' ? '<div class="kpi"><span>Reste à payer Marc</span><b class="or">' + eur(rM) + '</b></div>' : '') +
       '<div class="kpi"><span>Déjà réglé' + (m.id === 'jeff' || m.id === 'marc' ? '' : ' (25 %)') + '</span><b>' + eur(m.id === 'jeff' ? r2(dejaReg.reduce(function (s, l) { return s + l.j; }, 0)) : m.id === 'marc' ? r2(dejaReg.reduce(function (s, l) { return s + l.m; }, 0)) : dR) + '</b></div>' +
       '<div class="kpi"><span>À vérifier</span><b class="' + (aVerif ? 'alerte' : '') + '">' + aVerif + '</b></div></div></div>';
-    h += '<div class="periode"><span>Période éligible : <b>du ' + dfr(S.miseEnLigne) + ' au ' + dfr(plus12moisMoins1()) + '</b> (12 mois après la mise en ligne constatée par écrit — date fictive pour la démo).</span><span>Base HT = TTC ÷ 1,21, arrondie au centime par encaissement.</span></div>';
+    h += '<div class="periode"><span>Période éligible : <b>du ' + dfr(S.miseEnLigne) + ' au ' + dfr(plus12moisMoins1()) + '</b> (12 mois après la mise en ligne constatée par écrit — date fictive pour la démo).</span><span>Commission = <b>16 % / 9 % du montant HT signé et encaissé</b> : la part HT de chaque paiement est tirée de la facture (sans la TVA), plafonnée au HT du devis signé.</span></div>';
     if (al.length) {
       h += '<h2 class="sous-titre" style="margin-top:0">Contrôle : ' + al.length + ' point' + (al.length > 1 ? 's' : '') + ' à vérifier</h2><div class="alertes">' +
         al.map(function (a) { return '<button type="button" class="alerte-ligne" style="--sev:' + a.sev + '" data-act="fiche" data-id="' + a.pid + '" data-onglet="facturation"><div><b>' + esc(a.titre) + '</b><span>' + esc(a.texte) + '</span></div></button>'; }).join('') + '</div>';
@@ -537,7 +577,7 @@
       '<label class="bascule-case"><input type="checkbox" data-input="voirReglees"' + (ui.voirReglees ? ' checked' : '') + ' /> Afficher les commissions déjà réglées' + (nbCach ? ' (' + nbCach + ')' : '') + '</label>' +
       '<div class="droite">' + (estAdmin() ? '<button type="button" class="btn" data-act="reglement">Enregistrer un règlement</button>' : '') + '<button type="button" class="btn btn-or" data-act="export-commissions">Exporter le rapport' + (ui.mois ? ' du mois' : '') + '</button></div></div>';
     var cj = m.id === 'jeff' ? ' col-j' : '', cm = m.id === 'marc' ? ' col-j' : '';
-    h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Encaissement</th><th>Client / dossier</th><th>Devis signé</th><th class="num">TTC</th><th class="num">Base HT</th><th class="num' + cj + '">JEGO 16 %</th><th class="num' + cm + '">Marc 9 %</th><th>Justificatif</th><th>Statut</th></tr></thead><tbody>' +
+    h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Encaissement</th><th>Client / dossier</th><th>Devis signé</th><th class="num">Payé TTC</th><th class="num">HT encaissé</th><th class="num' + cj + '">JEGO 16 %</th><th class="num' + cm + '">Marc 9 %</th><th>Justificatif</th><th>Statut</th></tr></thead><tbody>' +
       Lv.slice().reverse().map(function (l) {
         var st = STATUT_COM[l.e.statut] || STATUT_COM.a_verifier, sel;
         if (!l.el.ok) sel = '<span class="pastille p-neutre">Non éligible</span>';
@@ -547,7 +587,7 @@
         return '<tr><td>' + dfr(l.e.date) + '<div class="aide" style="margin-top:2px">' + esc(l.e.reference) + ' · ' + esc(l.f.numero) + '</div></td>' +
           '<td><a href="#" data-act="fiche" data-id="' + l.p.id + '" data-onglet="facturation">' + esc(l.p.entreprise) + '</a><div class="aide" style="margin-top:2px">' + esc(l.p.devis ? l.p.devis.ref : '') + '</div></td>' +
           '<td>' + dfr(l.p.devis && l.p.devis.dateSignature) + '<div style="margin-top:3px"><span class="pastille ' + (l.el.ok ? 'p-ok' : 'p-neutre') + '">' + l.el.raison + '</span></div></td>' +
-          '<td class="num">' + eur(l.e.ttc) + '</td><td class="num">' + eur(l.ht) + '</td><td class="num' + cj + '">' + (l.el.ok ? eur(l.j) : '—') + '</td><td class="num' + cm + '">' + (l.el.ok ? eur(l.m) : '—') + '</td>' +
+          '<td class="num">' + eur(l.e.ttc) + '</td><td class="num">' + eur(l.base) + (l.hors ? '<div class="aide" style="margin-top:2px" title="Au-delà du HT du devis signé : pas de commission">+ ' + eur(l.hors) + ' hors devis signé</div>' : '') + '</td><td class="num' + cj + '">' + (l.el.ok ? eur(l.j) : '—') + '</td><td class="num' + cm + '">' + (l.el.ok ? eur(l.m) : '—') + '</td>' +
           '<td>' + (l.e.justificatif ? '<span class="fichier">📎 Extrait</span>' : '<span class="fichier manquant">Manquant</span>') + '</td><td>' + sel + '</td></tr>';
       }).join('') + (Lv.length ? '' : '<tr><td colspan="9" class="vide">' + (nbCach ? 'Tout est réglé pour cette période.' : 'Aucun encaissement ce mois-ci') + '</td></tr>') +
       '</tbody><tfoot><tr><td colspan="4">' + (ui.voirReglees ? 'Total éligible' : 'Total à payer (hors réglé)') + (ui.mois ? ' — ' + moisLabel(ui.mois) : '') + '</td><td class="num">' + eur(tHt) + '</td><td class="num' + cj + '">' + eur(tJ) + '</td><td class="num' + cm + '">' + eur(tM) + '</td><td colspan="2"></td></tr></tfoot></table></div>';
@@ -582,7 +622,7 @@
         var reste = d.aVenirHt;
         return '<tr><td><a href="#" data-act="fiche" data-id="' + d.p.id + '" data-onglet="facturation">' + esc(d.p.entreprise) + '</a><div class="aide" style="margin-top:2px">' + esc(d.p.devis.ref) + ' · signé le ' + dfr(d.p.devis.dateSignature) + (d.nonFact ? ' · ' + eur(d.nonFact) + ' HT pas encore facturé' : '') + '</div></td>' +
           '<td class="num">' + eur(d.devisHt) + '</td><td class="num">' + eur(d.factureHt) + '</td><td class="num">' + eur(d.encHt) + '</td><td class="num">' + (reste ? '<b>' + eur(reste) + '</b>' : '—') + '</td>' +
-          (taux ? '<td class="num col-j">' + eur(r2(d.encHt * taux)) + '</td><td class="num col-j">' + (reste ? eur(r2(reste * taux)) : '—') + '</td>' : '<td class="num">' + (reste ? eur(r2(reste * TAUX_J)) : '—') + '</td><td class="num">' + (reste ? eur(r2(reste * TAUX_M)) : '—') + '</td>') + '</tr>';
+          (taux ? '<td class="num col-j">' + eur(r2(d.baseAcq * taux)) + '</td><td class="num col-j">' + (reste ? eur(r2(reste * taux)) : '—') + '</td>' : '<td class="num">' + (reste ? eur(r2(reste * TAUX_J)) : '—') + '</td><td class="num">' + (reste ? eur(r2(reste * TAUX_M)) : '—') + '</td>') + '</tr>';
       }).join('') + '</tbody></table></div></details>';
     h += '<p class="aide" style="margin:8px 0 0">« À venir » est une estimation : une commission n’est due que sur ce que le client paie réellement (§ 10.2 — impayé : aucune commission).</p>';
     return h;
@@ -625,8 +665,8 @@
   function ecranChoix() {
     var desc = {
       hugo: 'Saisit les prospects, devis, factures et encaissements, et joint les justificatifs.',
-      jeff: 'Consulte les ventes, les encaissements et sa commission de 16 %, exporte le rapport. Ne modifie rien.',
-      marc: 'Consulte les ventes, les encaissements et sa commission de 9 %, exporte le rapport. Ne modifie rien.',
+      jeff: 'Consulte les ventes, les encaissements et sa commission de 16 % du montant HT signé et encaissé, exporte le rapport. Ne modifie rien.',
+      marc: 'Consulte les ventes, les encaissements et sa commission de 9 % du montant HT signé et encaissé, exporte le rapport. Ne modifie rien.',
       admin: 'Gère les comptes et les mots de passe, valide le statut des commissions après le contrôle mensuel.'
     };
     return '<main class="ecran-choix"><img class="logo" src="/media/logo-va.png" alt="VATEA" /><div><h1>VATEA — CRM</h1><p class="sous">Démonstration avec des données fictives. Choisissez un compte : dans la vraie application, chacun se connecte avec son identifiant et son mot de passe.</p></div>' +
@@ -674,7 +714,7 @@
       if (!fs.length) corps += '<p class="aide" style="margin:0">Aucune facture enregistrée.</p>';
       fs.forEach(function (f) {
         var sp = statutPaiement(f), recu = encaisse(f.id), du = ttcF(f), es = encDe(f.id);
-        corps += '<div class="facture"><div class="facture-tete"><b>' + esc(f.numero) + '</b>' + (f.avoir ? '<span class="pastille p-neutre">Avoir</span>' : '') + '<span class="pastille ' + sp.cl + '">' + sp.t + '</span><span class="num">' + eur(f.ht) + ' HT · ' + eur(du) + ' TTC</span></div>' +
+        corps += '<div class="facture"><div class="facture-tete"><b>' + esc(f.numero) + '</b>' + (f.avoir ? '<span class="pastille p-neutre">Avoir</span>' : '') + '<span class="pastille ' + sp.cl + '">' + sp.t + '</span><span class="num">' + eur(f.ht) + ' HT · TVA ' + Math.round(tauxTva(f) * 100) + ' % · ' + eur(du) + ' TTC</span></div>' +
           '<div class="aide" style="margin:0">Émise le ' + dfr(f.date) + (f.fichier ? ' · 📎 ' + esc(f.fichier) : '') + ' · ' + (f.avoir ? 'remboursé ' : 'encaissé ') + eur(Math.abs(recu)) + '</div>' +
           es.map(function (e) {
             return '<div class="mvt"><span>' + dfr(e.date) + '</span><span class="ref">' + esc(e.reference) + '</span><b class="num">' + eur(e.ttc) + '</b>' +
@@ -735,12 +775,12 @@
   }
   function exporterCommissions() {
     var L = lignesCommission().filter(function (l) { return !ui.mois || l.e.date.slice(0, 7) === ui.mois; });
-    var lignes = [['Date encaissement', 'Client / dossier', 'Devis', 'Devis signé le', 'Montant devis HT', 'Éligibilité', 'Facture', 'Référence virement', 'Encaissé TTC', 'Base HT', 'Commission JEGO 16 %', 'Commission Marc 9 %', 'Justificatif', 'Statut', 'Réglé le', 'Référence règlement']];
+    var lignes = [['Date encaissement', 'Client / dossier', 'Devis', 'Devis signé le', 'Montant devis HT', 'Éligibilité', 'Facture', 'Référence virement', 'Payé TTC', 'HT encaissé (base)', 'Commission JEGO 16 %', 'Commission Marc 9 %', 'Justificatif', 'Statut', 'Réglé le', 'Référence règlement']];
     L.forEach(function (l) {
-      lignes.push([dfr(l.e.date), l.p.entreprise, l.p.devis ? l.p.devis.ref : '', dfr(l.p.devis && l.p.devis.dateSignature), nombre(l.p.devis && l.p.devis.montantHt), l.el.raison, l.f.numero, l.e.reference, nombre(l.e.ttc), nombre(l.ht), l.el.ok ? nombre(l.j) : '', l.el.ok ? nombre(l.m) : '', l.e.justificatif ? 'Extrait joint' : 'Manquant', l.el.ok ? (STATUT_COM[l.e.statut] || STATUT_COM.a_verifier).label : 'Non éligible', l.e.reglement ? dfr(l.e.reglement.date) : '', l.e.reglement ? l.e.reglement.ref : '']);
+      lignes.push([dfr(l.e.date), l.p.entreprise, l.p.devis ? l.p.devis.ref : '', dfr(l.p.devis && l.p.devis.dateSignature), nombre(l.p.devis && l.p.devis.montantHt), l.el.raison, l.f.numero, l.e.reference, nombre(l.e.ttc), nombre(l.base), l.el.ok ? nombre(l.j) : '', l.el.ok ? nombre(l.m) : '', l.e.justificatif ? 'Extrait joint' : 'Manquant', l.el.ok ? (STATUT_COM[l.e.statut] || STATUT_COM.a_verifier).label : 'Non éligible', l.e.reglement ? dfr(l.e.reglement.date) : '', l.e.reglement ? l.e.reglement.ref : '']);
     });
     var el = L.filter(function (l) { return l.el.ok; });
-    lignes.push(['TOTAL ÉLIGIBLE', '', '', '', '', '', '', '', '', nombre(r2(el.reduce(function (s, l) { return s + l.ht; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.j; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.m; }, 0))), '', '']);
+    lignes.push(['TOTAL ÉLIGIBLE', '', '', '', '', '', '', '', '', nombre(r2(el.reduce(function (s, l) { return s + l.base; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.j; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.m; }, 0))), '', '']);
     telecharger('vatea-rapport-commissions-' + (ui.mois || 'complet') + '.csv', lignes);
     journaliser('Export du rapport de commissions', null, ui.mois ? moisLabel(ui.mois) : 'Tous les mois'); sauver();
   }
@@ -819,7 +859,7 @@
             { k: 'date', label: 'Date du règlement', type: 'date', req: true, demi: true, val: auj(), max: auj() },
             { k: 'ref', label: 'Référence (facture / virement)', req: true, demi: true, val: 'Facture JEGO 2026-0' + (10 + S.seq.e) },
             { k: 'lignes', label: 'Lignes réglées', type: 'checks', options: dispo.map(function (l) {
-              return { v: l.e.id, checked: true, label: dfr(l.e.date) + ' — ' + esc(l.p.entreprise) + ' — base ' + eur(l.ht) + ' → JEGO ' + eur(l.j) + ' · Marc ' + eur(l.m) };
+              return { v: l.e.id, checked: true, label: dfr(l.e.date) + ' — ' + esc(l.p.entreprise) + ' — HT encaissé ' + eur(l.base) + ' → JEGO ' + eur(l.j) + ' · Marc ' + eur(l.m) };
             }) }
           ],
           onOk: function (v) {
@@ -831,6 +871,45 @@
             });
             journaliser('Règlement de commissions', null, v.ref + ' du ' + dfr(v.date) + ' — ' + v.lignes.length + ' ligne(s) : JEGO ' + eur(r2(tj)) + ', Marc ' + eur(r2(tm)));
             sauver(); o_apres = function () { rendre(); toast('Règlement enregistré : JEGO ' + eur(r2(tj)) + ', Marc ' + eur(r2(tm)) + '. Lignes figées.'); };
+            return null;
+          }
+        });
+        break;
+      }
+      case 'campagne': {
+        var nouveaux = S.prospects.filter(function (p) { return p.etape === 'nouveau' && p.email; });
+        var sansEmail = S.prospects.filter(function (p) { return p.etape === 'nouveau' && !p.email; }).length;
+        var externe = !S.prospects.some(function (p) { return p.email === 'lea@fleuriste-ixelles.example'; });
+        var opts = nouveaux.map(function (p) { return { v: 'p' + p.id, checked: true, label: esc(p.entreprise) + ' — ' + esc(p.email) + ' <span class="aide">(Nouveau → Contacté)</span>' }; });
+        if (externe) opts.push({ v: 'externe', checked: true, label: 'Fleuriste Ixelles (fictif) — lea@fleuriste-ixelles.example <span class="aide">(contact de la liste, absent du CRM : créé en Contacté)</span>' });
+        if (!opts.length) return toast('Aucun prospect « Nouveau » avec une adresse e-mail à contacter.', true);
+        ouvrirModale({
+          titre: 'Simuler l’envoi de la campagne',
+          texte: 'Dans le vrai CRM, c’est l’outil de campagne qui prévient le CRM à chaque e-mail envoyé : le prospect passe tout seul en « Contacté ». Un prospect déjà plus avancé n’est jamais reculé.' + (sansEmail ? ' ' + sansEmail + ' prospect(s) « Nouveau » sans e-mail ne peuvent pas être contactés.' : ''),
+          bouton: 'Envoyer la campagne',
+          champs: [
+            { k: 'nom', label: 'Nom de la campagne', req: true, val: 'Relance automne' },
+            { k: 'cibles', label: 'Destinataires', type: 'checks', options: opts }
+          ],
+          onOk: function (v) {
+            if (!v.cibles.length) return 'Cochez au moins un destinataire.';
+            var n = 0, maintenantStr = maintenant();
+            v.cibles.forEach(function (c) {
+              if (c === 'externe') {
+                var np = { id: S.seq.p++, entreprise: 'Fleuriste Ixelles (fictif)', contact: 'Léa Martin', email: 'lea@fleuriste-ixelles.example', telephone: '', siteWeb: '', typeVideo: '', montantEstime: null,
+                  source: 'Campagne e-mail', sourceVerrouillee: false, etape: 'contacte', responsable: 'hugo', relance: auj(3), notes: 'Contact créé par la campagne « ' + v.nom + ' ».', raisonPerte: '', devis: null, creeLe: auj(), campagneLe: maintenantStr };
+                S.prospects.unshift(np);
+                journaliser('Contact créé par la campagne', np.id, v.nom + ' — ' + np.email, 'Campagne automatique');
+              } else {
+                var p = prospect(c.slice(1));
+                if (p.etape !== 'nouveau') { journaliser('E-mail de campagne envoyé', p.id, v.nom, 'Campagne automatique'); return; }
+                p.etape = 'contacte'; p.campagneLe = maintenantStr; if (!p.relance) p.relance = auj(3);
+                journaliser('Contacté par la campagne automatique', p.id, v.nom + ' — Nouveau → Contacté', 'Campagne automatique');
+              }
+              n++;
+            });
+            sauver();
+            o_apres = function () { rendre(); toast('Campagne « ' + v.nom + ' » : ' + n + ' contact(s) passé(s) automatiquement en « Contacté ».'); };
             return null;
           }
         });
