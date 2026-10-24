@@ -2,7 +2,8 @@ import Link from 'next/link';
 import CtaBox from '@/components/CtaBox';
 import Faq from '@/components/Faq';
 import Placeholder from '@/components/Placeholder';
-import { CTA_DEVIS } from '@/lib/site';
+import VideoPresentation from '@/components/VideoPresentation';
+import { CTA_DEVIS, VIDEO_PRESENTATION } from '@/lib/site';
 
 const FAQ = [
   { q: '1. Comment savoir quel type de vidéo correspond à mon objectif ?', a: 'Tout dépend de votre message et de votre public. Vidéo corporate pour valoriser votre entreprise, publicitaire pour promouvoir votre offre ou formation pour transmettre un savoir : je vous aide à choisir le format adapté.' },
@@ -38,6 +39,20 @@ export default function HomePage() {
           <h1 id="titre-hero" className="h1-xl" style={{ maxWidth: 980, marginBottom: 20 }}>Vos vidéos d’entreprise sur mesure à Bruxelles.</h1>
           <p className="lead" style={{ maxWidth: 700, marginBottom: 32 }}>Corporate, publicitaires ou de formation : VATEA donne vie à vos projets, partout en Belgique et dans le nord de la France.</p>
           <a className="btn btn-gold" href="#contact">{CTA_DEVIS}</a>
+        </div>
+      </section>
+
+      {/* VIDÉO DE PRÉSENTATION (plusieurs minutes) — source à renseigner dans lib/site.js */}
+      <section className="section section-video" aria-labelledby="titre-video">
+        <div className="container">
+          <div className="video-tete">
+            <span className="rule" aria-hidden="true" />
+            <h2 id="titre-video" className="h2">{VIDEO_PRESENTATION.titre}</h2>
+            {VIDEO_PRESENTATION.sousTitre && <p className="lead" style={{ color: 'var(--texte-2)' }}>{VIDEO_PRESENTATION.sousTitre}</p>}
+          </div>
+          <div className="gold-frame video-cadre">
+            <VideoPresentation />
+          </div>
         </div>
       </section>
 

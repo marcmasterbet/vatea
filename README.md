@@ -59,6 +59,26 @@ Node.js 18.18 ou plus récent.
 Pour remplacer un emplacement rayé par une vraie image : remplacer le composant `<Placeholder … />` correspondant
 par `<Image src="/media/ma-photo.jpg" alt="description" width={…} height={…} />` (import `next/image`).
 
+
+## Vidéo de présentation (accueil)
+
+Sous la vidéo en boucle, un grand lecteur attend la vidéo de présentation de l'entreprise (plusieurs minutes).
+Renseigner **une** source dans `lib/site.js` > `VIDEO_PRESENTATION` :
+
+- `youtubeId` ou `vimeoId` (**recommandé** : mettre la vidéo en « non répertorié », puis copier son identifiant) ;
+  seule une image est chargée, le lecteur n'arrive qu'au clic (rapide et sans cookies avant lecture) ;
+- ou `mp4` (fichier dans `public/media/`, déconseillé au-delà de 50 Mo) avec `couverture` pour l'image d'attente.
+
+Le titre « Découvrez VATEA en vidéo » est provisoire : à valider par JEGO.
+
+## Démo du CRM (`/demo-crm`)
+
+Démonstration autonome, données fictives enregistrées dans le navigateur du visiteur (bouton « Réinitialiser »).
+Parcours complet du cahier des charges : prospect → devis envoyé → devis signé (preuve) → facture → encaissements
+(acompte, solde, remboursement) → commissions JEGO 16 % / EI BRETZNER MARC 9 % → rapport mensuel CSV.
+Comptes : Hugo (saisie), Jeff et Marc (contrôle, lecture seule), Administrateur (comptes, statut des commissions).
+Fichiers : `public/demo-crm/` (index.html, demo.js, demo.css, polices). Non indexée par Google.
+
 ## Images
 
 Les photos de fond sont importées dans le code (`import … from '@/public/media/…'`) : un aperçu flou s'affiche

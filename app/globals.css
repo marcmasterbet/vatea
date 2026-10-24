@@ -191,3 +191,17 @@ textarea.field { resize: vertical; min-height: 64px; }
 
 /* ---------- Bouton haut de page ---------- */
 .to-top { position: fixed; right: clamp(16px, 2.5vw, 32px); bottom: clamp(16px, 2.5vw, 32px); z-index: 40; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--or); background: rgba(18, 18, 18, .85); color: var(--or); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 30px rgba(0, 0, 0, .5), 0 0 24px rgba(201, 168, 106, .18); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+/* ─── Vidéo de présentation (accueil) ─── */
+.section-video { padding-bottom: clamp(30px, 4vw, 60px); }
+.video-tete { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; margin-bottom: clamp(24px, 3vw, 40px); }
+.video-cadre { max-width: 1180px; margin: 0 auto; }
+.video-cadre .ph { border-radius: 14px; }
+.video-pres { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; border: 0; padding: 0; position: relative; }
+.video-pres iframe { width: 100%; height: 100%; border: 0; display: block; }
+video.video-pres { object-fit: contain; }
+.video-facade { cursor: pointer; }
+.video-facade img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease, opacity .3s; opacity: .85; }
+.video-facade:hover img { transform: scale(1.02); opacity: 1; }
+.video-facade .play { position: absolute; inset: 0; margin: auto; }
+@media (max-width: 600px) { .gold-frame.video-cadre { padding: 6px; border-radius: 16px; } }
