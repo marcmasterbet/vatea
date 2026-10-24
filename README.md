@@ -77,6 +77,8 @@ Démonstration autonome, données fictives enregistrées dans le navigateur du v
 Parcours complet du cahier des charges : prospect → devis envoyé → devis signé (preuve) → facture → encaissements
 (acompte, solde, remboursement) → commissions JEGO 16 % / EI BRETZNER MARC 9 % → rapport mensuel CSV.
 Comptes : Hugo (saisie), Jeff et Marc (contrôle, lecture seule), Administrateur (comptes, statut des commissions).
+Page Commissions : bloc « Ma commission » (déjà réglé, à recevoir, en contrôle, à venir, total prévu), détail par dossier,
+et « Enregistrer un règlement » (admin) : les lignes payées passent en « Réglée », sont figées et sortent du reste à payer.
 Fichiers : `public/demo-crm/` (index.html, demo.js, demo.css, polices). Non indexée par Google.
 
 ## Images

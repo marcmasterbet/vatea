@@ -271,3 +271,23 @@ select.mini-select { height: 30px; border-radius: 8px; padding: 0 28px 0 10px; f
 .mvt { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 7px 0; border-top: 1px solid var(--ligne); font-size: 12.5px; }
 .mvt .ref { flex: 1 1 120px; color: var(--texte-2); min-width: 0; overflow-wrap: anywhere; }
 .mvt .num { margin-left: auto; }
+.tuiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.tuile { border: 1px solid var(--ligne); border-top: 2px solid var(--t, var(--ligne-2)); border-radius: 12px; padding: 14px; background: rgba(20,17,20,.75); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tuile span { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--texte-3); }
+.tuile b { font-size: 22px; font-weight: 800; white-space: nowrap; }
+.tuile small { color: var(--texte-3); font-size: 12px; line-height: 1.35; }
+.tuile.ok { --t: #3ecf8e; } .tuile.ok b { color: #8ff0c4; }
+.tuile.info { --t: #6aa8f0; } .tuile.info b { color: #a9cdf8; }
+.tuile.warn { --t: #e8a15a; } .tuile.warn b { color: #f5c58f; }
+.tuile.neutre { --t: #7a7a7a; }
+.tuile.total { --t: var(--or); background: rgba(201,168,106,.07); border-color: rgba(201,168,106,.4); } .tuile.total b { color: var(--or-clair); }
+.details-dossiers { margin-top: 14px; }
+.details-dossiers summary { cursor: pointer; font-weight: 700; color: var(--or-clair); padding: 6px 0 10px; }
+@media (max-width: 1100px) { .tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tuile.total { grid-column: 1 / -1; } }
+.cases { border: 1px solid var(--ligne); border-radius: 10px; padding: 10px 12px; margin: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.cases legend { padding: 0 4px; margin-bottom: 0; }
+.case { display: flex; gap: 10px; align-items: flex-start; font-size: 12.5px; color: var(--texte-2); cursor: pointer; }
+.case input { margin-top: 2px; accent-color: #c9a86a; }
+.bascule-case { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--texte-2); cursor: pointer; }
+.bascule-case input { accent-color: #c9a86a; }
+.modale { max-height: calc(100vh - 32px); overflow-y: auto; }

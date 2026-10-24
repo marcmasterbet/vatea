@@ -99,7 +99,7 @@
         { id: 'f4', numero: 'FA-2026-031', prospectId: 7, date: '2026-09-20', ht: 4500, fichier: 'FA-2026-031.pdf' }
       ],
       encaissements: [
-        { id: 'e1', factureId: 'f1', date: '2026-04-20', ttc: 3630, reference: 'VIR-ACOMPTE-LABO', justificatif: 'extrait-2026-04.pdf', statut: 'reglee' },
+        { id: 'e1', factureId: 'f1', date: '2026-04-20', ttc: 3630, reference: 'VIR-ACOMPTE-LABO', justificatif: 'extrait-2026-04.pdf', statut: 'reglee', reglement: { date: '2026-05-10', ref: 'Facture JEGO 2026-004' } },
         { id: 'e2', factureId: 'f3', date: '2026-03-05', ttc: 3630, reference: 'VIR-LEFEVRE', justificatif: 'extrait-2026-03.pdf', statut: 'a_verifier' },
         { id: 'e3', factureId: 'f1', date: '2026-06-15', ttc: 3630, reference: 'VIR-SOLDE-LABO', justificatif: 'extrait-2026-06.pdf', statut: 'facturee' },
         { id: 'e4', factureId: 'f2', date: '2026-07-05', ttc: -1210, reference: 'REMB-LABO', justificatif: 'extrait-2026-07.pdf', statut: 'regularisee' },
@@ -128,7 +128,7 @@
   function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* démo sans sauvegarde */ } }
   S = charger();
 
-  var ui = { vue: 'pipeline', mode: 'kanban', q: '', source: '', perduOuvert: false, mois: '', fiche: null };
+  var ui = { vue: 'pipeline', mode: 'kanban', q: '', source: '', perduOuvert: false, mois: '', fiche: null, voirReglees: false };
   try { ui.mode = localStorage.getItem(CLE + '-mode') || 'kanban'; } catch (e) { /* */ }
 
   function moi() { return S.comptes.find(function (c) { return c.id === S.session; }); }
@@ -170,6 +170,33 @@
       return { e: e, f: f, p: p, el: el, ht: ht, j: el.ok ? r2(ht * TAUX_J) : 0, m: el.ok ? r2(ht * TAUX_M) : 0 };
     });
   }
+  /** Ce que chaque bénéficiaire a touché, va toucher, et pourrait toucher si les clients paient. */
+  function resumeCommissions() {
+    var acq = { reglee: 0, aRecevoir: 0, controle: 0, regul: 0 };
+    lignesCommission().forEach(function (l) {
+      if (!l.el.ok) return;
+      var k = l.e.statut === 'reglee' ? 'reglee' : (l.e.statut === 'validee' || l.e.statut === 'facturee') ? 'aRecevoir' : l.e.statut === 'regularisee' ? 'regul' : 'controle';
+      acq[k] = r2(acq[k] + l.ht);
+    });
+    var dossiers = S.prospects.filter(function (p) { return p.etape !== 'perdu' && eligibilite(p).ok; }).map(function (p) {
+      var fs = facturesDe(p.id);
+      var factureHt = r2(fs.filter(function (f) { return !f.avoir; }).reduce(function (t, f) { return t + f.ht; }, 0));
+      var avoirsHt = r2(fs.filter(function (f) { return f.avoir; }).reduce(function (t, f) { return t + f.ht; }, 0));
+      var encHt = r2(lignesCommission().filter(function (l) { return l.p.id === p.id; }).reduce(function (t, l) { return t + l.ht; }, 0));
+      var resteFactHt = r2(Math.max(0, resteDu(p)) / (1 + TVA));
+      var nonFact = r2(Math.max(0, p.devis.montantHt - factureHt));
+      return { p: p, devisHt: p.devis.montantHt, factureHt: r2(factureHt + avoirsHt), encHt: encHt, resteFactHt: resteFactHt, nonFact: nonFact, aVenirHt: r2(resteFactHt + nonFact) };
+    });
+    var aVenir = r2(dossiers.reduce(function (t, d) { return t + d.aVenirHt; }, 0));
+    var pour = function (taux) {
+      var o = { reglee: r2(acq.reglee * taux), aRecevoir: r2(acq.aRecevoir * taux), controle: r2(acq.controle * taux), regul: r2(acq.regul * taux), aVenir: r2(aVenir * taux) };
+      o.acquis = r2(o.reglee + o.aRecevoir + o.controle + o.regul);
+      o.total = r2(o.acquis + o.aVenir);
+      return o;
+    };
+    return { j: pour(TAUX_J), m: pour(TAUX_M), dossiers: dossiers, base: acq, aVenirHt: aVenir };
+  }
+
   function alertes() {
     var a = [];
     S.prospects.forEach(function (p) {
@@ -202,6 +229,9 @@
     var id = 'm-' + c.k, req = c.req ? ' required' : '', v = c.val == null ? '' : c.val;
     var lbl = '<label class="lbl" for="' + id + '">' + esc(c.label) + (c.req ? ' *' : '') + '</label>';
     var input;
+    if (c.type === 'checks') return '<fieldset class="cases"><legend class="lbl">' + esc(c.label) + '</legend>' + c.options.map(function (o, i) {
+      return '<label class="case"><input type="checkbox" name="' + c.k + '" value="' + esc(o.v) + '"' + (o.checked ? ' checked' : '') + ' /><span>' + o.label + '</span></label>';
+    }).join('') + '</fieldset>';
     if (c.type === 'select') input = '<select class="champ" id="' + id + '" name="' + c.k + '"' + req + '><option value="">Choisir…</option>' + c.options.map(function (o) { return '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select>';
     else if (c.type === 'textarea') input = '<textarea class="champ" id="' + id + '" name="' + c.k + '"' + req + '>' + esc(v) + '</textarea>';
     else if (c.type === 'file') input = '<input class="champ" style="padding-top:8px" type="file" id="' + id + '" name="' + c.k + '" accept=".pdf,.jpg,.jpeg,.png"' + req + ' />';
@@ -228,6 +258,7 @@
       var v = {}, manque = null;
       champs.forEach(function (c) {
         var el = f.elements[c.k];
+        if (c.type === 'checks') { v[c.k] = Array.prototype.filter.call(f.querySelectorAll('input[name="' + c.k + '"]'), function (x) { return x.checked; }).map(function (x) { return x.value; }); return; }
         if (c.type === 'file') v[c.k] = el.files && el.files[0] ? el.files[0].name : '';
         else v[c.k] = el.value.trim();
         if (c.req && !v[c.k] && !manque) manque = c.label;
@@ -482,34 +513,78 @@
     var el = L.filter(function (l) { return l.el.ok; });
     var tHt = r2(el.reduce(function (s, l) { return s + l.ht; }, 0)), tJ = r2(el.reduce(function (s, l) { return s + l.j; }, 0)), tM = r2(el.reduce(function (s, l) { return s + l.m; }, 0));
     var aVerif = el.filter(function (l) { return l.e.statut === 'a_verifier'; }).length;
+    var nonReg = toutes.filter(function (l) { return l.el.ok && l.e.statut !== 'reglee'; }), dejaReg = toutes.filter(function (l) { return l.el.ok && l.e.statut === 'reglee'; });
+    var rJ = r2(nonReg.reduce(function (s, l) { return s + l.j; }, 0)), rM = r2(nonReg.reduce(function (s, l) { return s + l.m; }, 0));
+    var dR = r2(dejaReg.reduce(function (s, l) { return s + l.j + l.m; }, 0));
+    var Lv = L.filter(function (l) { return ui.voirReglees || l.e.statut !== 'reglee'; });
+    var elv = Lv.filter(function (l) { return l.el.ok; });
+    tHt = r2(elv.reduce(function (s, l) { return s + l.ht; }, 0)); tJ = r2(elv.reduce(function (s, l) { return s + l.j; }, 0)); tM = r2(elv.reduce(function (s, l) { return s + l.m; }, 0));
+    var nbCach = L.length - Lv.length;
     var al = alertes();
     var h = '<div class="tete-page"><div><h1>Commissions</h1><p>' + (m.id === 'jeff' ? 'Votre commission JEGO : 16 % du HT encaissé' : m.id === 'marc' ? 'Votre commission EI BRETZNER MARC : 9 % du HT encaissé' : 'JEGO 16 % et EI BRETZNER MARC 9 % du HT réellement encaissé') + '</p></div>' +
-      '<div class="kpis"><div class="kpi"><span>HT encaissé éligible</span><b>' + eur(tHt) + '</b></div><div class="kpi"><span>JEGO 16 %</span><b class="or">' + eur(tJ) + '</b></div>' +
-      '<div class="kpi"><span>Marc 9 %</span><b class="or">' + eur(tM) + '</b></div><div class="kpi"><span>Total 25 %</span><b>' + eur(r2(tJ + tM)) + '</b></div>' +
+      '<div class="kpis">' + (m.id !== 'marc' ? '<div class="kpi"><span>Reste à payer JEGO</span><b class="or">' + eur(rJ) + '</b></div>' : '') +
+      (m.id !== 'jeff' ? '<div class="kpi"><span>Reste à payer Marc</span><b class="or">' + eur(rM) + '</b></div>' : '') +
+      '<div class="kpi"><span>Déjà réglé' + (m.id === 'jeff' || m.id === 'marc' ? '' : ' (25 %)') + '</span><b>' + eur(m.id === 'jeff' ? r2(dejaReg.reduce(function (s, l) { return s + l.j; }, 0)) : m.id === 'marc' ? r2(dejaReg.reduce(function (s, l) { return s + l.m; }, 0)) : dR) + '</b></div>' +
       '<div class="kpi"><span>À vérifier</span><b class="' + (aVerif ? 'alerte' : '') + '">' + aVerif + '</b></div></div></div>';
     h += '<div class="periode"><span>Période éligible : <b>du ' + dfr(S.miseEnLigne) + ' au ' + dfr(plus12moisMoins1()) + '</b> (12 mois après la mise en ligne constatée par écrit — date fictive pour la démo).</span><span>Base HT = TTC ÷ 1,21, arrondie au centime par encaissement.</span></div>';
     if (al.length) {
       h += '<h2 class="sous-titre" style="margin-top:0">Contrôle : ' + al.length + ' point' + (al.length > 1 ? 's' : '') + ' à vérifier</h2><div class="alertes">' +
         al.map(function (a) { return '<button type="button" class="alerte-ligne" style="--sev:' + a.sev + '" data-act="fiche" data-id="' + a.pid + '" data-onglet="facturation"><div><b>' + esc(a.titre) + '</b><span>' + esc(a.texte) + '</span></div></button>'; }).join('') + '</div>';
     }
+    h += blocMaCommission(m);
+    h += '<h2 class="sous-titre">Mouvements encaissés</h2>';
     h += '<div class="barre"><select class="champ" data-input="mois" aria-label="Mois d’encaissement"><option value="">Tous les mois</option>' + moisDispo.map(function (x) { return '<option value="' + x + '"' + (ui.mois === x ? ' selected' : '') + '>' + moisLabel(x) + '</option>'; }).join('') + '</select>' +
-      '<div class="droite"><button type="button" class="btn btn-or" data-act="export-commissions">Exporter le rapport' + (ui.mois ? ' du mois' : '') + '</button></div></div>';
+      '<label class="bascule-case"><input type="checkbox" data-input="voirReglees"' + (ui.voirReglees ? ' checked' : '') + ' /> Afficher les commissions déjà réglées' + (nbCach ? ' (' + nbCach + ')' : '') + '</label>' +
+      '<div class="droite">' + (estAdmin() ? '<button type="button" class="btn" data-act="reglement">Enregistrer un règlement</button>' : '') + '<button type="button" class="btn btn-or" data-act="export-commissions">Exporter le rapport' + (ui.mois ? ' du mois' : '') + '</button></div></div>';
     var cj = m.id === 'jeff' ? ' col-j' : '', cm = m.id === 'marc' ? ' col-j' : '';
     h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Encaissement</th><th>Client / dossier</th><th>Devis signé</th><th class="num">TTC</th><th class="num">Base HT</th><th class="num' + cj + '">JEGO 16 %</th><th class="num' + cm + '">Marc 9 %</th><th>Justificatif</th><th>Statut</th></tr></thead><tbody>' +
-      L.slice().reverse().map(function (l) {
+      Lv.slice().reverse().map(function (l) {
         var st = STATUT_COM[l.e.statut] || STATUT_COM.a_verifier, sel;
         if (!l.el.ok) sel = '<span class="pastille p-neutre">Non éligible</span>';
-        else if (estAdmin()) sel = '<select class="champ mini-select" data-statut="' + l.e.id + '">' + STATUTS_COM.map(function (s) { return '<option value="' + s.id + '"' + (s.id === l.e.statut ? ' selected' : '') + '>' + s.label + '</option>'; }).join('') + '</select>';
+        else if (l.e.statut === 'reglee') sel = '<span class="pastille p-ok" title="Figée : ne peut plus être modifiée">🔒 Réglée</span>' + (l.e.reglement ? '<div class="aide" style="margin-top:3px">le ' + dfr(l.e.reglement.date) + ' · ' + esc(l.e.reglement.ref) + '</div>' : '');
+        else if (estAdmin()) sel = '<select class="champ mini-select" data-statut="' + l.e.id + '">' + STATUTS_COM.filter(function (s) { return s.id !== 'reglee'; }).map(function (s) { return '<option value="' + s.id + '"' + (s.id === l.e.statut ? ' selected' : '') + '>' + s.label + '</option>'; }).join('') + '</select>';
         else sel = '<span class="pastille ' + st.cl + '">' + st.label + '</span>';
         return '<tr><td>' + dfr(l.e.date) + '<div class="aide" style="margin-top:2px">' + esc(l.e.reference) + ' · ' + esc(l.f.numero) + '</div></td>' +
           '<td><a href="#" data-act="fiche" data-id="' + l.p.id + '" data-onglet="facturation">' + esc(l.p.entreprise) + '</a><div class="aide" style="margin-top:2px">' + esc(l.p.devis ? l.p.devis.ref : '') + '</div></td>' +
           '<td>' + dfr(l.p.devis && l.p.devis.dateSignature) + '<div style="margin-top:3px"><span class="pastille ' + (l.el.ok ? 'p-ok' : 'p-neutre') + '">' + l.el.raison + '</span></div></td>' +
           '<td class="num">' + eur(l.e.ttc) + '</td><td class="num">' + eur(l.ht) + '</td><td class="num' + cj + '">' + (l.el.ok ? eur(l.j) : '—') + '</td><td class="num' + cm + '">' + (l.el.ok ? eur(l.m) : '—') + '</td>' +
           '<td>' + (l.e.justificatif ? '<span class="fichier">📎 Extrait</span>' : '<span class="fichier manquant">Manquant</span>') + '</td><td>' + sel + '</td></tr>';
-      }).join('') + (L.length ? '' : '<tr><td colspan="9" class="vide">Aucun encaissement ce mois-ci</td></tr>') +
-      '</tbody><tfoot><tr><td colspan="4">Total éligible' + (ui.mois ? ' — ' + moisLabel(ui.mois) : '') + '</td><td class="num">' + eur(tHt) + '</td><td class="num' + cj + '">' + eur(tJ) + '</td><td class="num' + cm + '">' + eur(tM) + '</td><td colspan="2"></td></tr></tfoot></table></div>';
+      }).join('') + (Lv.length ? '' : '<tr><td colspan="9" class="vide">' + (nbCach ? 'Tout est réglé pour cette période.' : 'Aucun encaissement ce mois-ci') + '</td></tr>') +
+      '</tbody><tfoot><tr><td colspan="4">' + (ui.voirReglees ? 'Total éligible' : 'Total à payer (hors réglé)') + (ui.mois ? ' — ' + moisLabel(ui.mois) : '') + '</td><td class="num">' + eur(tHt) + '</td><td class="num' + cj + '">' + eur(tJ) + '</td><td class="num' + cm + '">' + eur(tM) + '</td><td colspan="2"></td></tr></tfoot></table></div>';
     h += '<p class="aide" style="margin-top:10px">' + (estAdmin() ? 'Vous pouvez faire évoluer le statut après le rapprochement mensuel. Une commission sans extrait bancaire ne peut pas être validée.' : 'Le statut est mis à jour par l’administrateur après le rapprochement mensuel validé par les parties.') +
       ' Rappel § 11 : aucun CRM tenu par le débiteur ne prouve à lui seul que toutes les ventes sont déclarées ; la protection repose sur les pièces et les droits d’audit.</p>';
+    return h;
+  }
+
+  function blocMaCommission(m) {
+    var R = resumeCommissions();
+    var tuile = function (lbl, val, aide, cl) { return '<div class="tuile' + (cl ? ' ' + cl : '') + '"><span>' + lbl + '</span><b>' + eur(val) + '</b><small>' + aide + '</small></div>'; };
+    var tuiles = function (o) {
+      return '<div class="tuiles">' +
+        tuile('Déjà réglé', o.reglee, 'Commissions déjà payées', 'ok') +
+        tuile('À recevoir', r2(o.aRecevoir + o.regul), 'Validé ou facturé, paiement en attente' + (o.regul ? ' — dont ' + eur(o.regul) + ' déduits (remboursement client)' : ''), 'info') +
+        tuile('En contrôle', o.controle, 'Client a payé, vérification mensuelle en cours', 'warn') +
+        tuile('À venir', o.aVenir, 'Si les clients règlent les factures et devis signés restants', 'neutre') +
+        tuile('Total prévu', o.total, 'Acquis ' + eur(o.acquis) + ' + à venir ' + eur(o.aVenir), 'total') + '</div>';
+    };
+    var h = '<h2 class="sous-titre">' + (m.id === 'jeff' || m.id === 'marc' ? 'Ma commission' : 'Commissions par bénéficiaire') + ' <small class="aide" style="font-family:var(--font, inherit);letter-spacing:0;text-transform:none">depuis la mise en ligne</small></h2>';
+    if (m.id === 'jeff') h += tuiles(R.j);
+    else if (m.id === 'marc') h += tuiles(R.m);
+    else {
+      var ligne = function (n, o) { return '<tr><td><b>' + n + '</b></td><td class="num">' + eur(o.reglee) + '</td><td class="num">' + eur(r2(o.aRecevoir + o.regul)) + '</td><td class="num">' + eur(o.controle) + '</td><td class="num">' + eur(o.aVenir) + '</td><td class="num"><b>' + eur(o.total) + '</b></td></tr>'; };
+      h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Bénéficiaire</th><th class="num">Déjà réglé</th><th class="num">À recevoir</th><th class="num">En contrôle</th><th class="num">À venir</th><th class="num">Total prévu</th></tr></thead><tbody>' +
+        ligne('JEGO — 16 %', R.j) + ligne('EI BRETZNER MARC — 9 %', R.m) + '</tbody></table></div>';
+    }
+    var taux = m.id === 'jeff' ? TAUX_J : m.id === 'marc' ? TAUX_M : null;
+    h += '<details class="details-dossiers"' + (taux ? ' open' : '') + '><summary>Détail par dossier éligible (' + R.dossiers.length + ')</summary><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Dossier</th><th class="num">Devis signé HT</th><th class="num">Facturé HT</th><th class="num">Encaissé HT</th><th class="num">Reste à encaisser HT</th>' +
+      (taux ? '<th class="num col-j">Commission acquise</th><th class="num col-j">Commission à venir</th>' : '<th class="num">JEGO à venir</th><th class="num">Marc à venir</th>') + '</tr></thead><tbody>' +
+      R.dossiers.map(function (d) {
+        var reste = d.aVenirHt;
+        return '<tr><td><a href="#" data-act="fiche" data-id="' + d.p.id + '" data-onglet="facturation">' + esc(d.p.entreprise) + '</a><div class="aide" style="margin-top:2px">' + esc(d.p.devis.ref) + ' · signé le ' + dfr(d.p.devis.dateSignature) + (d.nonFact ? ' · ' + eur(d.nonFact) + ' HT pas encore facturé' : '') + '</div></td>' +
+          '<td class="num">' + eur(d.devisHt) + '</td><td class="num">' + eur(d.factureHt) + '</td><td class="num">' + eur(d.encHt) + '</td><td class="num">' + (reste ? '<b>' + eur(reste) + '</b>' : '—') + '</td>' +
+          (taux ? '<td class="num col-j">' + eur(r2(d.encHt * taux)) + '</td><td class="num col-j">' + (reste ? eur(r2(reste * taux)) : '—') + '</td>' : '<td class="num">' + (reste ? eur(r2(reste * TAUX_J)) : '—') + '</td><td class="num">' + (reste ? eur(r2(reste * TAUX_M)) : '—') + '</td>') + '</tr>';
+      }).join('') + '</tbody></table></div></details>';
+    h += '<p class="aide" style="margin:8px 0 0">« À venir » est une estimation : une commission n’est due que sur ce que le client paie réellement (§ 10.2 — impayé : aucune commission).</p>';
     return h;
   }
 
@@ -660,9 +735,9 @@
   }
   function exporterCommissions() {
     var L = lignesCommission().filter(function (l) { return !ui.mois || l.e.date.slice(0, 7) === ui.mois; });
-    var lignes = [['Date encaissement', 'Client / dossier', 'Devis', 'Devis signé le', 'Montant devis HT', 'Éligibilité', 'Facture', 'Référence virement', 'Encaissé TTC', 'Base HT', 'Commission JEGO 16 %', 'Commission Marc 9 %', 'Justificatif', 'Statut']];
+    var lignes = [['Date encaissement', 'Client / dossier', 'Devis', 'Devis signé le', 'Montant devis HT', 'Éligibilité', 'Facture', 'Référence virement', 'Encaissé TTC', 'Base HT', 'Commission JEGO 16 %', 'Commission Marc 9 %', 'Justificatif', 'Statut', 'Réglé le', 'Référence règlement']];
     L.forEach(function (l) {
-      lignes.push([dfr(l.e.date), l.p.entreprise, l.p.devis ? l.p.devis.ref : '', dfr(l.p.devis && l.p.devis.dateSignature), nombre(l.p.devis && l.p.devis.montantHt), l.el.raison, l.f.numero, l.e.reference, nombre(l.e.ttc), nombre(l.ht), l.el.ok ? nombre(l.j) : '', l.el.ok ? nombre(l.m) : '', l.e.justificatif ? 'Extrait joint' : 'Manquant', l.el.ok ? (STATUT_COM[l.e.statut] || STATUT_COM.a_verifier).label : 'Non éligible']);
+      lignes.push([dfr(l.e.date), l.p.entreprise, l.p.devis ? l.p.devis.ref : '', dfr(l.p.devis && l.p.devis.dateSignature), nombre(l.p.devis && l.p.devis.montantHt), l.el.raison, l.f.numero, l.e.reference, nombre(l.e.ttc), nombre(l.ht), l.el.ok ? nombre(l.j) : '', l.el.ok ? nombre(l.m) : '', l.e.justificatif ? 'Extrait joint' : 'Manquant', l.el.ok ? (STATUT_COM[l.e.statut] || STATUT_COM.a_verifier).label : 'Non éligible', l.e.reglement ? dfr(l.e.reglement.date) : '', l.e.reglement ? l.e.reglement.ref : '']);
     });
     var el = L.filter(function (l) { return l.el.ok; });
     lignes.push(['TOTAL ÉLIGIBLE', '', '', '', '', '', '', '', '', nombre(r2(el.reduce(function (s, l) { return s + l.ht; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.j; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.m; }, 0))), '', '']);
@@ -733,6 +808,34 @@
           onOk: function (v) { pp2.devis.fichierPreuve = v.f; journaliser('Preuve de signature jointe', pp2.id, pp2.devis.ref + ' — ' + v.f); sauver(); o_apres = rendre; return null; } });
         break;
       }
+      case 'reglement': {
+        var dispo = lignesCommission().filter(function (l) { return l.el.ok && ['validee', 'facturee', 'regularisee'].indexOf(l.e.statut) >= 0; });
+        if (!dispo.length) return toast('Aucune commission validée à régler. Validez d’abord les lignes après le contrôle mensuel.', true);
+        ouvrirModale({
+          titre: 'Règlement de commissions',
+          texte: 'Cochez les lignes payées. Elles passeront en « Réglée », seront figées et ne compteront plus dans le reste à payer. Circuit : JEGO facture VATEA 25 %, EI BRETZNER MARC facture JEGO 9 % (§ 8.1).',
+          bouton: 'Enregistrer le règlement',
+          champs: [
+            { k: 'date', label: 'Date du règlement', type: 'date', req: true, demi: true, val: auj(), max: auj() },
+            { k: 'ref', label: 'Référence (facture / virement)', req: true, demi: true, val: 'Facture JEGO 2026-0' + (10 + S.seq.e) },
+            { k: 'lignes', label: 'Lignes réglées', type: 'checks', options: dispo.map(function (l) {
+              return { v: l.e.id, checked: true, label: dfr(l.e.date) + ' — ' + esc(l.p.entreprise) + ' — base ' + eur(l.ht) + ' → JEGO ' + eur(l.j) + ' · Marc ' + eur(l.m) };
+            }) }
+          ],
+          onOk: function (v) {
+            if (!v.lignes.length) return 'Cochez au moins une ligne.';
+            var tj = 0, tm = 0;
+            v.lignes.forEach(function (id) {
+              var e = S.encaissements.find(function (x) { return x.id === id; }), l = dispo.find(function (x) { return x.e.id === id; });
+              e.statut = 'reglee'; e.reglement = { date: v.date, ref: v.ref }; tj += l.j; tm += l.m;
+            });
+            journaliser('Règlement de commissions', null, v.ref + ' du ' + dfr(v.date) + ' — ' + v.lignes.length + ' ligne(s) : JEGO ' + eur(r2(tj)) + ', Marc ' + eur(r2(tm)));
+            sauver(); o_apres = function () { rendre(); toast('Règlement enregistré : JEGO ' + eur(r2(tj)) + ', Marc ' + eur(r2(tm)) + '. Lignes figées.'); };
+            return null;
+          }
+        });
+        break;
+      }
       case 'export-commissions': exporterCommissions(); toast('Rapport exporté (CSV, ouvrable dans Excel).'); break;
       case 'export-prospects': exporterProspects(); toast('Liste exportée (CSV).'); break;
       case 'mdp': {
@@ -765,9 +868,11 @@
     var t = ev.target, k = t.dataset && t.dataset.input;
     if (k === 'source') { ui.source = t.value; rendre(); }
     else if (k === 'mois') { ui.mois = t.value; rendre(); }
+    else if (k === 'voirReglees') { ui.voirReglees = t.checked; rendre(); }
     else if (k === 'miseEnLigne' && t.value) { var av = S.miseEnLigne; S.miseEnLigne = t.value; journaliser('Date de mise en ligne modifiée', null, dfr(av) + ' → ' + dfr(t.value)); sauver(); rendre(); toast('Période éligible recalculée.'); }
     else if (t.dataset && t.dataset.statut) {
       var e = S.encaissements.find(function (x) { return x.id === t.dataset.statut; });
+      if (e.statut === 'reglee') { t.value = e.statut; return toast('Commission réglée : elle est figée.', true); }
       if (!e.justificatif && t.value !== 'a_verifier') { t.value = e.statut; return toast('Impossible de valider sans extrait bancaire.', true); }
       var av2 = STATUT_COM[e.statut].label; e.statut = t.value; journaliser('Statut de commission', facture(e.factureId).prospectId, e.reference + ' : ' + av2 + ' → ' + STATUT_COM[e.statut].label); sauver(); rendre();
     } else if (t.hasAttribute && t.hasAttribute('data-etape-fiche')) {
