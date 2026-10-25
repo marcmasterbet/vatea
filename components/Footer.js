@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CONTACT } from '@/lib/site';
 import { IconInstagram, IconLinkedin } from './Icons';
+import LienCookies from './LienCookies';
 
 export default function Footer() {
   return (
@@ -13,10 +14,11 @@ export default function Footer() {
             <Image src="/media/vatea-nom.svg" alt="VATEA" width={93} height={22} className="brand-nom" unoptimized />
           </p>
           <nav aria-label="Liens légaux" style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14 }}>
-            <Link href="/mentions-legales">Mentions légales</Link>
-            <Link href="/politique-de-confidentialite">Politique de confidentialité et cookies</Link>
-            <Link href="/conditions-d-utilisation">Conditions d’utilisation</Link>
             <Link href="/conditions-generales">Conditions générales</Link>
+            <Link href="/mentions-legales">Mentions légales</Link>
+            <Link href="/conditions-d-utilisation">Conditions d’utilisation</Link>
+            <Link href="/politique-de-confidentialite">Politique de confidentialité</Link>
+            <LienCookies />
           </nav>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: 'var(--texte-2)' }}>
             <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>

@@ -27,23 +27,26 @@ Responsable de la publication et du contenu de vatea.be : Hugo Elvira.
 
 ## 3. Hébergement
 
-Le site est créé et hébergé au moyen des services de :
+Le site est hébergé par :
 
-**Wix Online Platforms Limited**
-1 Grant's Row
-Dublin 2 D02HX96
-Irlande
+**Vercel Inc.**
+440 N Barranca Ave #4133
+Covina, CA 91723
+États-Unis
+Site : [vercel.com](https://vercel.com)
 
-Wix confirme ces coordonnées dans ses informations relatives aux mentions légales des sites utilisant sa plateforme.
+## 4. Conception et réalisation du site
 
-## 4. Propriété intellectuelle
+Le site a été conçu et réalisé par **EI BRETZNER MARC**.
+
+## 5. Propriété intellectuelle
 
 Les règles relatives à la propriété intellectuelle des textes, photographies, vidéos, réalisations, marques et autres contenus présents sur vatea.be sont détaillées dans les [Conditions d’utilisation de vatea.be](/conditions-d-utilisation).
 
-## 5. Données personnelles
+## 6. Données personnelles
 
 Les informations relatives à la collecte et au traitement des données personnelles ainsi qu’à l’utilisation des cookies sont disponibles dans la [Politique de confidentialité et cookies](/politique-de-confidentialite).
 
-## 6. Conditions applicables aux prestations
+## 7. Conditions applicables aux prestations
 
 Les conditions encadrant les prestations audiovisuelles proposées sous le nom VATEA sont détaillées dans les [Conditions générales applicables aux prestations](/conditions-generales).

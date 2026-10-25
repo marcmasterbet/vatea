@@ -109,6 +109,7 @@ label.lbl { display: block; font-size: 11px; letter-spacing: .12em; text-transfo
 /* ─── Kanban ─── */
 .kanban { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(230px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x proximity; }
 .kanban.avec-perdu-replie { grid-template-columns: repeat(7, minmax(176px, 1fr)) 48px; grid-auto-columns: unset; }
+.kanban.avec-perdu-ouvert { grid-template-columns: repeat(8, minmax(150px, 1fr)); grid-auto-columns: unset; }
 .colonne { background: rgba(20, 17, 20, .75); border: 1px solid var(--ligne); border-top: 2px solid var(--c); border-radius: var(--rayon); min-height: 62vh; display: flex; flex-direction: column; scroll-snap-align: start; transition: background .15s, border-color .15s; }
 .colonne.survol { background: rgba(201, 168, 106, .07); border-color: var(--c); }
 .col-tete { display: flex; align-items: center; gap: 7px; padding: 12px 12px; flex-wrap: wrap; border-bottom: 1px solid var(--ligne); }
@@ -217,7 +218,7 @@ table.tableau { width: 100%; border-collapse: collapse; min-width: 820px; }
   .recherche { width: 100%; flex: 1 1 100%; }
   .barre .droite { margin-left: 0; width: 100%; }
   .barre .droite .btn { flex: 1; }
-  .kanban, .kanban.avec-perdu-replie { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 84%; scroll-snap-type: x mandatory; }
+  .kanban, .kanban.avec-perdu-replie, .kanban.avec-perdu-ouvert { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 84%; scroll-snap-type: x mandatory; }
   .colonne { min-height: 50vh; }
   .colonne.repliee { min-width: 0; }
   .grille2 { grid-template-columns: 1fr; }
@@ -349,3 +350,8 @@ select option:disabled { color: #6c6660; }
 .bandeau-preuve { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 16px; border: 1px solid rgba(229, 103, 77, .45); border-left: 3px solid #e5674d; border-radius: 12px; background: rgba(229, 103, 77, .08); }
 .bandeau-preuve b { display: block; margin-bottom: 2px; }
 .bandeau-preuve span { font-size: 13px; opacity: .85; }
+.cellule-com { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.montant-facture { display: grid; gap: 2px; margin: 4px 0 10px; padding: 14px 16px; border: 1px solid rgba(201, 168, 106, .35); border-radius: 12px; background: rgba(201, 168, 106, .07); }
+.montant-facture span { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--texte-3); }
+.montant-facture b { font-size: 26px; color: var(--or-clair, #e2c68f); }
+.montant-facture small { color: var(--texte-3); }

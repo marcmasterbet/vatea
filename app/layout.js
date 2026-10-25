@@ -2,9 +2,11 @@ import '@fontsource-variable/manrope';
 import '@fontsource/cinzel/500.css';
 import '@fontsource/cinzel/700.css';
 import BackToTop from '@/components/BackToTop';
+import CookieConsent from '@/components/CookieConsent';
 import DevisSection from '@/components/DevisSection';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import SansPagesJuridiques from '@/components/SansPagesJuridiques';
 import { SITE_URL } from '@/lib/site';
 import './globals.css';
 
@@ -24,9 +26,10 @@ export default function RootLayout({ children }) {
       <body>
         <Header />
         <main>{children}</main>
-        <DevisSection />
+        <SansPagesJuridiques><DevisSection /></SansPagesJuridiques>
         <Footer />
         <BackToTop />
+        <CookieConsent />
       </body>
     </html>
   );

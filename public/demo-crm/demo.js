@@ -2,7 +2,9 @@
    Version 3 (25/10/2026), décisions de la réunion :
    - Hugo passe par une coopérative qui lui verse l'argent dès la signature du devis et gère factures et relances ;
    - commission = 16 % du HT signé (JEGO / Jeff) et 9 % du HT signé (EI BRETZNER MARC / Marc), acquise à la signature ;
-   - chaque bénéficiaire confirme lui-même qu'il a été payé (ligne figée ensuite) ;
+   - pas d'acompte : le client paie l'intégralité ; Hugo est crédité sur son compte coopérateur (aucun justificatif) ;
+   - la coopérative paie JEGO et EI BRETZNER MARC sur facture, une facture par devis :
+     chaque bénéficiaire déclare sa facture (montant calculé, n°, date) puis confirme lui-même qu'il a été payé (ligne figée ensuite) ;
    - Jeff a le même accès qu'Hugo ; Marc consulte ; l'administrateur gère les comptes ;
    - pas de retour en arrière dans le pipeline (réactivation d'un perdu, correction tracée par l'admin) ;
    - paiements clients = simple suivi pour Hugo ; documents téléchargeables dans chaque fiche. */
@@ -146,6 +148,9 @@
       comPayee: {
         'devis-8': { j: { date: '2026-05-10', par: 'Jeff Framarin' }, m: { date: '2026-05-20', par: 'Marc Bretzner' } }
       },
+      comFacture: {
+        'devis-8': { j: { num: 'JEGO-2026-004', date: '2026-04-30', par: 'Jeff Framarin' }, m: { num: 'MB-2026-011', date: '2026-05-02', par: 'Marc Bretzner' } }
+      },
       journal: [
         { le: '2026-10-21 09:14', auteur: 'Site web', action: 'Demande de devis reçue', pid: 1, details: 'Vidéo de formation' },
         { le: '2026-10-19 16:02', auteur: 'Site web', action: 'Demande de devis reçue', pid: 2, details: 'Vidéo publicitaire' },
@@ -168,6 +173,7 @@
       if (t) {
         var o = JSON.parse(t);
         if (o && o.v === 3) {
+          o.comFacture = o.comFacture || {};
           // Rattrapage : une preuve ajoutée depuis l'onglet Documents n'était pas reliée au devis
           var utilises = {};
           o.prospects.forEach(function (p) { if (p.devis && p.devis.docPreuve) utilises[p.devis.docPreuve] = 1; (p.avenants || []).forEach(function (a) { if (a.docPreuve) utilises[a.docPreuve] = 1; }); });
@@ -227,16 +233,22 @@
       l.m = l.el.ok ? r2(l.ht * TAUX_M) : 0;
       var st = S.comPayee[l.id] || {};
       l.payeJ = st.j || null; l.payeM = st.m || null;
+      var fa = S.comFacture[l.id] || {};
+      l.factJ = fa.j || null; l.factM = fa.m || null;
       l.preuveOk = l.preuve === 'sans-objet' || !!(l.preuve && doc(l.preuve));
     });
     return L.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
   }
   function totaux(L, cle) {
-    var t = { paye: 0, aPayer: 0, sansPreuve: 0 };
+    var t = { paye: 0, aPayer: 0, sansPreuve: 0, facture: 0, aFacturer: 0 };
     L.forEach(function (l) {
       if (!l.el.ok) return;
-      var montant = l[cle], paye = cle === 'j' ? l.payeJ : l.payeM;
-      if (paye) t.paye = r2(t.paye + montant); else { t.aPayer = r2(t.aPayer + montant); if (!l.preuveOk) t.sansPreuve = r2(t.sansPreuve + montant); }
+      var montant = l[cle], paye = cle === 'j' ? l.payeJ : l.payeM, fact = cle === 'j' ? l.factJ : l.factM;
+      if (paye) t.paye = r2(t.paye + montant);
+      else {
+        t.aPayer = r2(t.aPayer + montant);
+        if (fact) t.facture = r2(t.facture + montant); else if (l.preuveOk) t.aFacturer = r2(t.aFacturer + montant); else t.sansPreuve = r2(t.sansPreuve + montant);
+      }
     });
     t.total = r2(t.paye + t.aPayer);
     return t;
@@ -421,7 +433,7 @@
   function demanderSignature(p, suite) {
     ouvrirModale({
       titre: p.entreprise + ' — devis signé',
-      texte: 'Dès la signature, la commission est acquise : la coopérative paie directement 16 % du HT à JEGO et 9 % du HT à Marc. Période éligible : du ' + dfr(S.miseEnLigne) + ' au ' + dfr(finIncluse()) + '.',
+      texte: 'Dès la signature, la commission est acquise : JEGO (16 % du HT) et Marc (9 % du HT) envoient chacun leur facture à la coopérative, qui les paie directement. Période éligible : du ' + dfr(S.miseEnLigne) + ' au ' + dfr(finIncluse()) + '.',
       bouton: 'Valider la signature',
       champs: [
         { k: 'dateSignature', label: 'Date de signature', type: 'date', req: true, demi: true, val: auj(), max: auj() },
@@ -550,7 +562,7 @@
       '<div class="droite">' + (w ? '<button type="button" class="btn" data-act="import" title="Créer des fiches à partir d’un fichier Excel ou CSV">⬆ Importer des contacts</button><button type="button" class="btn" data-act="campagne" title="Simule l’outil de campagne e-mail qui prévient le CRM à chaque envoi">📧 Simuler la campagne</button>' : '') +
       '<button type="button" class="btn" data-act="export-prospects">Exporter</button>' + (w ? '<button type="button" class="btn btn-or" data-act="nouveau">+ Nouveau prospect</button>' : '') + '</div></div>';
     if (ui.mode === 'kanban') {
-      h += '<div class="kanban' + (ui.perduOuvert ? '' : ' avec-perdu-replie') + '">';
+      h += '<div class="kanban' + (ui.perduOuvert ? ' avec-perdu-ouvert' : ' avec-perdu-replie') + '">';
       ETAPES.filter(function (e) { return e.id !== 'perdu'; }).forEach(function (e) {
         var it = L.filter(function (p) { return p.etape === e.id; }), tot = somme(it);
         h += '<section class="colonne" style="--c:' + e.c + '" data-etape="' + e.id + '" aria-label="' + e.label + '"><div class="col-tete"><span class="point"></span><h2>' + e.label + '</h2><span class="nb">' + it.length + '</span>' +
@@ -602,14 +614,39 @@
 
   /* ───────────── Rendu : commissions (16 % / 9 % du HT signé) ───────────── */
   function cellulePaiement(l, cle) {
-    var paye = cle === 'j' ? l.payeJ : l.payeM, beneficiaire = cle === 'j' ? 'jeff' : 'marc', m = moi(), negatif = l.ht < 0;
+    var paye = cle === 'j' ? l.payeJ : l.payeM, fact = cle === 'j' ? l.factJ : l.factM, beneficiaire = cle === 'j' ? 'jeff' : 'marc', m = moi(), negatif = l.ht < 0;
     if (!l.el.ok) return '<span class="pastille p-neutre">Non éligible</span>';
-    if (paye) return '<span class="pastille p-ok" title="Figée">🔒 ' + (negatif ? 'Déduite' : 'Payée') + ' le ' + dfr(paye.date) + '</span>';
+    if (paye) return '<span class="pastille p-ok" title="Figée' + (fact ? ' — facture ' + esc(fact.num) : '') + '">🔒 ' + (negatif ? 'Déduite' : 'Payée') + ' le ' + dfr(paye.date) + '</span>';
+    var factHtml = fact ? '<span class="pastille p-info" title="Facture envoyée à la coopérative">Facture ' + esc(fact.num) + ' · ' + dfr(fact.date) + '</span>' : '';
     if (m.id === beneficiaire) {
       if (!l.preuveOk) return '<span class="pastille p-warn" title="Hugo ou Jeff doit joindre la preuve de signature">Preuve manquante</span>';
-      return '<button type="button" class="btn btn-petit btn-or" data-act="com-payee" data-l="' + l.id + '" data-b="' + cle + '">' + (negatif ? 'Confirmer la déduction' : 'J’ai été payé') + '</button>';
+      if (!fact) return '<button type="button" class="btn btn-petit" data-act="com-facture" data-l="' + l.id + '">' + (negatif ? 'Déduire sur ma facture' : 'Facture envoyée') + '</button>';
+      return '<div class="cellule-com">' + factHtml + '<button type="button" class="btn btn-petit btn-or" data-act="com-payee" data-l="' + l.id + '" data-b="' + cle + '">' + (negatif ? 'Confirmer la déduction' : 'J’ai été payé') + '</button></div>';
     }
-    return '<span class="pastille ' + (l.preuveOk ? 'p-warn' : 'p-bad') + '">' + (negatif ? 'À déduire' : 'À payer') + (l.preuveOk ? '' : ' · preuve manquante') + '</span>';
+    if (fact) return '<div class="cellule-com">' + factHtml + '<span class="pastille p-warn">' + (negatif ? 'À déduire' : 'En attente de paiement') + '</span></div>';
+    return '<span class="pastille ' + (l.preuveOk ? 'p-warn' : 'p-bad') + '">' + (negatif ? 'À déduire' : 'À facturer') + (l.preuveOk ? '' : ' · preuve manquante') + '</span>';
+  }
+  /** Le bénéficiaire déclare la facture envoyée à la coopérative : une facture par devis (ou avenant / annulation). */
+  function modaleFacture(ligneId) {
+    var m = moi(), b = m.id === 'jeff' ? 'j' : m.id === 'marc' ? 'm' : null;
+    if (!b) return toast('Seul le bénéficiaire déclare sa facture.', true);
+    var l = lignesCommission().find(function (x) { return x.id === ligneId; });
+    if (!l || !l.el.ok) return;
+    if (!l.preuveOk) return toast('Preuve de signature manquante : Hugo ou Jeff doit la joindre.', true);
+    if (b === 'j' ? l.factJ : l.factM) return toast('Facture déjà enregistrée pour ce devis.');
+    var taux = b === 'j' ? '16' : '9', neg = l.ht < 0;
+    ouvrirModale({ titre: neg ? 'Avoir / déduction à facturer' : 'Facture envoyée à la coopérative',
+      texte: l.p.entreprise + ' — ' + l.type.toLowerCase() + ' ' + esc(l.ref) + '</p><div class="montant-facture"><span>' + (neg ? 'Montant à déduire' : 'Montant à facturer') + '</span><b>' + eur(l[b]) + '</b><small>' + taux + ' % de ' + eur(l.ht) + ' HT signé</small></div><p class="aide">Reportez ce montant sur votre facture, puis indiquez son numéro.',
+      bouton: 'Enregistrer la facture',
+      champs: [
+        { k: 'num', label: 'N° de facture', req: true, demi: true, val: '' },
+        { k: 'date', label: 'Date de la facture', type: 'date', req: true, demi: true, val: auj(), max: auj() }
+      ],
+      onOk: function (v) {
+        S.comFacture[l.id] = S.comFacture[l.id] || {}; S.comFacture[l.id][b] = { num: v.num, date: v.date, par: m.nom };
+        journaliser('Facture de commission envoyée à la coopérative (' + (b === 'j' ? 'JEGO' : 'EI BRETZNER MARC') + ')', l.p.id, v.num + ' du ' + dfr(v.date) + ' — ' + l.ref + ' — ' + eur(l[b]));
+        sauver(); o_apres = function () { rendre(); toast('Facture ' + v.num + ' enregistrée (' + eur(l[b]) + '). Confirmez la réception dès que la coopérative a payé.'); }; return null;
+      } });
   }
   function vueCommissions() {
     var m = moi(), toutes = lignesCommission();
@@ -618,26 +655,26 @@
     var tJ = totaux(toutes, 'j'), tM = totaux(toutes, 'm'), envoye = devisEnvoyesHt(), al = alertesPreuve();
     var h = '<div class="tete-page"><div><h1>Commissions</h1><p>' + (m.id === 'jeff' ? 'Votre commission JEGO : 16 % du montant HT signé' : m.id === 'marc' ? 'Votre commission EI BRETZNER MARC : 9 % du montant HT signé' : 'JEGO : 16 % du HT signé · EI BRETZNER MARC : 9 % du HT signé') + ' — acquise dès la signature du devis.</p></div></div>';
     h += '<div class="periode"><span>Période éligible : <b>du ' + dfr(S.miseEnLigne) + ' au ' + dfr(finIncluse()) + '</b> (contrats signés dans les 12 mois suivant la mise en ligne constatée par écrit — date fictive pour la démo).</span>' +
-      '<span>Dès la signature, <b>la coopérative paie directement et séparément</b> JEGO (16 % du HT) et EI BRETZNER MARC (9 % du HT) : la commission ne dépend pas du paiement du client. Chacun confirme lui-même la réception de son paiement.</span></div>';
+      '<span>Dès la signature, la commission est acquise. <b>JEGO (16 % du HT) et EI BRETZNER MARC (9 % du HT) envoient chacun une facture par devis signé à la coopérative</b>, qui les paie directement et séparément, sans attendre le paiement du client. Sur chaque ligne : « Facture envoyée » (le montant est calculé), puis « J’ai été payé ».</span></div>';
     if (al.length) h += '<div class="alertes">' + al.map(function (a) { return '<button type="button" class="alerte-ligne" style="--sev:#e5674d" data-act="fiche" data-id="' + a.pid + '" data-onglet="devis"><div><b>' + esc(a.titre) + '</b><span>' + esc(a.texte) + '</span></div></button>'; }).join('') + '</div>';
     var tuile = function (lbl, val, aide, cl) { return '<div class="tuile' + (cl ? ' ' + cl : '') + '"><span>' + lbl + '</span><b>' + eur(val) + '</b><small>' + aide + '</small></div>'; };
     var tuiles = function (t, taux, nom) {
       return '<div class="tuiles tuiles-4">' + tuile('Déjà payé', t.paye, 'Reçu de la coopérative, confirmé par ' + nom, 'ok') +
-        tuile('À payer', t.aPayer, t.sansPreuve ? 'Par la coopérative — dont ' + eur(t.sansPreuve) + ' en attente de preuve de signature' : 'Par la coopérative : devis signés, commission acquise', 'warn') +
+        tuile('À payer', t.aPayer, [t.facture ? eur(t.facture) + ' facturé, en attente de la coopérative' : '', t.aFacturer ? eur(t.aFacturer) + ' à facturer' : '', t.sansPreuve ? eur(t.sansPreuve) + ' en attente de preuve de signature' : ''].filter(Boolean).join(' · ') || 'Rien en attente', 'warn') +
         tuile('Total acquis', t.total, Math.round(taux * 100) + ' % du HT signé', 'total') +
         tuile('Devis envoyés', r2(envoye * taux), 'Indicatif : si les ' + eur0(envoye) + ' HT envoyés sont signés', 'neutre') + '</div>';
     };
     if (m.id === 'jeff') h += '<h2 class="sous-titre">Ma commission — 16 % du HT signé</h2>' + tuiles(tJ, TAUX_J, 'vous');
     else if (m.id === 'marc') h += '<h2 class="sous-titre">Ma commission — 9 % du HT signé</h2>' + tuiles(tM, TAUX_M, 'vous');
     else {
-      var ligne = function (n, t) { return '<tr><td><b>' + n + '</b></td><td class="num">' + eur(t.paye) + '</td><td class="num"><b>' + eur(t.aPayer) + '</b>' + (t.sansPreuve ? '<div class="aide" style="margin-top:2px">dont ' + eur(t.sansPreuve) + ' sans preuve</div>' : '') + '</td><td class="num">' + eur(t.total) + '</td></tr>'; };
-      h += '<h2 class="sous-titre">Ce que la coopérative paie à chacun</h2><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Bénéficiaire (payé directement par la coopérative)</th><th class="num">Déjà payé</th><th class="num">Reste à payer</th><th class="num">Total acquis</th></tr></thead><tbody>' +
+      var ligne = function (n, t) { return '<tr><td><b>' + n + '</b></td><td class="num">' + eur(t.paye) + '</td><td class="num"><b>' + eur(t.aPayer) + '</b>' + (t.facture || t.sansPreuve ? '<div class="aide" style="margin-top:2px">' + [t.facture ? 'dont ' + eur(t.facture) + ' facturé' : '', t.sansPreuve ? eur(t.sansPreuve) + ' sans preuve' : ''].filter(Boolean).join(' · ') + '</div>' : '') + '</td><td class="num">' + eur(t.total) + '</td></tr>'; };
+      h += '<h2 class="sous-titre">Ce que la coopérative paie à chacun, sur facture</h2><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Bénéficiaire (payé par la coopérative sur sa facture)</th><th class="num">Déjà payé</th><th class="num">Reste à payer</th><th class="num">Total acquis</th></tr></thead><tbody>' +
         ligne('JEGO (Jeff) — 16 % du HT', tJ) + ligne('EI BRETZNER MARC — 9 % du HT', tM) + '</tbody></table></div>' +
         '<p class="aide" style="margin-top:8px">Devis envoyés non signés : ' + eur0(envoye) + ' HT (indicatif : JEGO ' + eur(r2(envoye * TAUX_J)) + ', Marc ' + eur(r2(envoye * TAUX_M)) + ').</p>';
     }
     h += '<h2 class="sous-titre">Détail par devis signé</h2><div class="barre"><select class="champ" data-input="mois" aria-label="Mois de signature"><option value="">Tous les mois</option>' + moisDispo.map(function (x) { return '<option value="' + x + '"' + (ui.mois === x ? ' selected' : '') + '>' + moisLabel(x) + '</option>'; }).join('') + '</select>' +
       '<label class="bascule-case"><input type="checkbox" data-input="resteSeulement"' + (ui.resteSeulement ? ' checked' : '') + ' /> Seulement ce qui reste à payer</label>' +
-      '<div class="droite"><button type="button" class="btn btn-or" data-act="export-commissions">Exporter' + (ui.mois ? ' le mois' : '') + '</button></div></div>';
+      '<div class="droite">' + '<button type="button" class="btn btn-or" data-act="export-commissions">Exporter' + (ui.mois ? ' le mois' : '') + '</button></div></div>';
     var cj = m.id === 'jeff' ? ' col-j' : '', cm = m.id === 'marc' ? ' col-j' : '';
     var el = L.filter(function (l) { return l.el.ok; });
     h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Signé le</th><th>Client / devis</th><th class="num">HT signé</th><th class="num' + cj + '">JEGO 16 % du HT</th><th class="num' + cm + '">Marc 9 % du HT</th><th>Preuve</th><th class="' + cj.trim() + '">JEGO</th><th class="' + cm.trim() + '">Marc</th></tr></thead><tbody>' +
@@ -649,7 +686,7 @@
           '<td>' + preuve + '</td><td class="' + cj.trim() + '">' + cellulePaiement(l, 'j') + '</td><td class="' + cm.trim() + '">' + cellulePaiement(l, 'm') + '</td></tr>';
       }).join('') + (L.length ? '' : '<tr><td colspan="8" class="vide">' + (ui.resteSeulement ? 'Tout est payé.' : 'Aucun devis signé sur cette période') + '</td></tr>') +
       '</tbody><tfoot><tr><td colspan="2">Total éligible' + (ui.mois ? ' — ' + moisLabel(ui.mois) : '') + '</td><td class="num">' + eur(r2(el.reduce(function (s, l) { return s + l.ht; }, 0))) + '</td><td class="num' + cj + '">' + eur(r2(el.reduce(function (s, l) { return s + l.j; }, 0))) + '</td><td class="num' + cm + '">' + eur(r2(el.reduce(function (s, l) { return s + l.m; }, 0))) + '</td><td colspan="3"></td></tr></tfoot></table></div>';
-    h += '<p class="aide" style="margin-top:10px">Une commission confirmée payée est figée. Avenant signé : une ligne en plus ; contrat annulé : une ligne négative à déduire, sans rien effacer.</p>';
+    h += '<p class="aide" style="margin-top:10px">Étapes pour chaque bénéficiaire : preuve de signature jointe (Hugo ou Jeff) → facture envoyée à la coopérative → paiement confirmé par le bénéficiaire, puis ligne figée. Avenant signé : une ligne en plus ; contrat annulé : une ligne négative à déduire, sans rien effacer.</p>';
     return h;
   }
 
@@ -826,8 +863,8 @@
   }
   function exporterCommissions() {
     var L = lignesCommission().filter(function (l) { return !ui.mois || l.date.slice(0, 7) === ui.mois; });
-    var lignes = [['Signé le', 'Type', 'Client', 'Référence', 'HT signé', 'Éligibilité', 'JEGO 16 % du HT', 'Marc 9 % du HT', 'Preuve de signature', 'JEGO payée le', 'Marc payée le']];
-    L.forEach(function (l) { lignes.push([dfr(l.date), l.type, l.p.entreprise, l.ref, nombre(l.ht), l.el.raison, l.el.ok ? nombre(l.j) : '', l.el.ok ? nombre(l.m) : '', l.preuveOk ? 'Oui' : 'Manquante', l.payeJ ? dfr(l.payeJ.date) : '', l.payeM ? dfr(l.payeM.date) : '']); });
+    var lignes = [['Signé le', 'Type', 'Client', 'Référence', 'HT signé', 'Éligibilité', 'JEGO 16 % du HT', 'Marc 9 % du HT', 'Preuve de signature', 'JEGO facture n°', 'JEGO facturée le', 'JEGO payée le', 'Marc facture n°', 'Marc facturée le', 'Marc payée le']];
+    L.forEach(function (l) { lignes.push([dfr(l.date), l.type, l.p.entreprise, l.ref, nombre(l.ht), l.el.raison, l.el.ok ? nombre(l.j) : '', l.el.ok ? nombre(l.m) : '', l.preuveOk ? 'Oui' : 'Manquante', l.factJ ? l.factJ.num : '', l.factJ ? dfr(l.factJ.date) : '', l.payeJ ? dfr(l.payeJ.date) : '', l.factM ? l.factM.num : '', l.factM ? dfr(l.factM.date) : '', l.payeM ? dfr(l.payeM.date) : '']); });
     var el = L.filter(function (l) { return l.el.ok; });
     lignes.push(['TOTAL ÉLIGIBLE', '', '', '', nombre(r2(el.reduce(function (s, l) { return s + l.ht; }, 0))), '', nombre(r2(el.reduce(function (s, l) { return s + l.j; }, 0))), nombre(r2(el.reduce(function (s, l) { return s + l.m; }, 0))), '', '', '']);
     telecharger('vatea-commissions-' + (ui.mois || 'complet') + '.csv', lignes);
@@ -1051,7 +1088,7 @@
         break;
       case 'vue': ui.vue = t.dataset.vue; ui.fiche = null; rendre(); window.scrollTo(0, 0); break;
       case 'mode': ui.mode = t.dataset.mode; try { localStorage.setItem(CLE + '-mode', ui.mode); } catch (e) { /* */ } rendre(); break;
-      case 'perdu-toggle': ui.perduOuvert = !ui.perduOuvert; rendre(); break;
+      case 'perdu-toggle': ui.perduOuvert = !ui.perduOuvert; rendre(); if (ui.perduOuvert) { var kb = document.querySelector('.kanban'); if (kb) kb.scrollLeft = kb.scrollWidth; } break;
       case 'nouveau': ui.fiche = { id: 'nouveau', onglet: 'fiche' }; rendreFiche(); break;
       case 'fiche': ui.fiche = { id: Number(t.dataset.id), onglet: t.dataset.onglet || 'fiche' }; rendreFiche(); break;
       case 'onglet': ui.fiche.onglet = t.dataset.onglet; rendreFiche(); break;
@@ -1124,10 +1161,12 @@
         });
         break;
       }
+      case 'com-facture': modaleFacture(t.dataset.l); break;
       case 'com-payee': {
         var l = lignesCommission().find(function (x) { return x.id === t.dataset.l; }), b = t.dataset.b, mm = moi();
         if (!l || (b === 'j' && mm.id !== 'jeff') || (b === 'm' && mm.id !== 'marc')) return toast('Seul le bénéficiaire peut confirmer son paiement.', true);
         if (!l.preuveOk) return toast('Preuve de signature manquante.', true);
+        if (!(b === 'j' ? l.factJ : l.factM)) return toast('Déclarez d’abord la facture envoyée à la coopérative.', true);
         var montantB = b === 'j' ? l.j : l.m, neg = l.ht < 0;
         ouvrirModale({ titre: neg ? 'Confirmer la déduction' : 'Confirmer que vous avez été payé', texte: l.p.entreprise + ' — ' + l.type.toLowerCase() + ' ' + esc(l.ref) + ' : <b>' + eur(montantB) + '</b> (' + (b === 'j' ? '16' : '9') + ' % de ' + eur(l.ht) + ' HT). Une fois confirmée, la ligne est figée.', bouton: 'Confirmer',
           champs: [{ k: 'date', label: neg ? 'Date de la déduction' : 'Date de réception du paiement de la coopérative', type: 'date', req: true, val: auj(), max: auj() }],

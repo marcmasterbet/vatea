@@ -100,11 +100,11 @@ Elles peuvent être accessibles uniquement lorsque cela est nécessaire à :
 
 Toute transmission doit rester limitée aux informations nécessaires à la finalité concernée.
 
-## 9. Wix et Google Analytics
+## 9. Hébergement et Google Analytics
 
-Le site vatea.be est créé et hébergé sur la plateforme Wix.
+Le site vatea.be est hébergé par Vercel Inc.
 
-Wix peut traiter certaines informations techniques nécessaires au fonctionnement du site, à sa sécurité, à son hébergement et, selon les paramètres choisis par le visiteur, à la mesure de son utilisation.
+Vercel peut traiter certaines informations techniques nécessaires au fonctionnement du site, à sa sécurité et à son hébergement.
 
 VATEA utilise Wix Analytics et Google Analytics 4 pour mesurer, après consentement aux statistiques, la fréquentation du site, les sources de trafic, les pages consultées et les interactions configurées, notamment les envois de formulaire. Ces mesures servent à améliorer le site et à comprendre quels contenus et canaux génèrent des demandes.
 

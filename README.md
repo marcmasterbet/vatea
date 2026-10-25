@@ -114,3 +114,8 @@ prend un peu plus de temps (Vercel prépare les versions), ensuite elles sont en
 - Texte de consentement RGPD et message de confirmation du formulaire.
 - Contenu des pages légales (validation juridique belge).
 - Erreur de mise en forme dans la conclusion de l'article 5 (astérisques) à corriger dans `content/blog.md`.
+
+## Pages juridiques et cookies
+- Textes dans `content/legal/*.md` (repris du site actuel de Hugo ; hébergeur mis à jour : Vercel ; site réalisé par EI BRETZNER MARC). Modifier le fichier suffit.
+- Bannière + panneau « Vos paramètres de cookies » (statistiques / marketing / préférences, choix gardé 6 mois, rouvert par « Paramètres des cookies » en pied de page).
+- Google Analytics 4 : ajouter la variable `NEXT_PUBLIC_GA_ID` (ex. `G-XXXXXXX`) dans Vercel → Settings → Environment Variables, puis redéployer. Consent Mode v2 : rien n'est mesuré sans accord.
