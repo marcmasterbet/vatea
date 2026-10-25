@@ -412,7 +412,7 @@
     var liens = [['pipeline', 'Prospects'], ['paiements', 'Paiements clients'], ['commissions', 'Commissions'], ['historique', 'Historique']];
     if (m.role === 'admin') liens.push(['admin', 'Admin']);
     return '<div class="bandeau-demo">Démonstration — données fictives enregistrées dans ce navigateur uniquement <button type="button" data-act="changer-compte">Changer de compte</button><button type="button" data-act="reinitialiser">Réinitialiser</button></div>' +
-      '<header class="entete"><a href="#" class="marque" data-act="vue" data-vue="pipeline"><img src="/media/logo-va.png" alt="" /><span><b>VATEA</b><i>CRM commercial</i></span></a>' +
+      '<header class="entete"><a href="#" class="marque" data-act="vue" data-vue="pipeline"><img src="/media/logo-va.png" alt="" /><span><img class="nom" src="/media/vatea-nom.svg" alt="VATEA" width="76" height="18" /><i>CRM commercial</i></span></a>' +
       '<nav class="nav" aria-label="Navigation">' + liens.map(function (l) {
         return '<a href="#" data-act="vue" data-vue="' + l[0] + '" class="' + (ui.vue === l[0] ? 'actif' : '') + '">' + l[1] + (l[0] === 'commissions' && nbAl ? '<span class="badge" title="Preuves de signature manquantes">' + nbAl + '</span>' : '') + '</a>';
       }).join('') + '</nav>' +
@@ -603,7 +603,7 @@
       marc: 'Consulte les ventes et sa commission de 9 % du montant HT signé, confirme ses paiements reçus. Ne modifie rien d’autre.',
       admin: 'Gère les comptes, les mots de passe et la date de mise en ligne. Peut corriger une erreur d’étape (tracé).'
     };
-    return '<main class="ecran-choix"><img class="logo" src="/media/logo-va.png" alt="VATEA" /><div><h1>VATEA — CRM</h1><p class="sous">Démonstration avec des données fictives. Choisissez un compte : dans la vraie application, chacun se connecte avec son identifiant et son mot de passe.</p></div>' +
+    return '<main class="ecran-choix"><img class="logo" src="/media/logo-va.png" alt="VATEA" /><div><h1 class="titre-logo"><img class="nom-titre" src="/media/vatea-nom.svg" alt="VATEA" width="150" height="36" /><span>CRM</span></h1><p class="sous">Démonstration avec des données fictives. Choisissez un compte : dans la vraie application, chacun se connecte avec son identifiant et son mot de passe.</p></div>' +
       '<div class="choix-comptes">' + ['hugo', 'jeff', 'marc', 'admin'].map(function (id) {
         var c = S.comptes.find(function (x) { return x.id === id; });
         return '<button type="button" class="choix" data-act="connexion" data-c="' + id + '"><span class="avatar">' + initiales(c.nom) + '</span><span class="role">' + ROLES[c.role] + ' · ' + esc(c.societe) + '</span><b>' + esc(c.nom) + '</b><p>' + desc[id] + '</p></button>';

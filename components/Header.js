@@ -27,7 +27,7 @@ export default function Header() {
         <div className="header-inner">
           <Link href="/" className="brand" aria-label="VATEA – accueil">
             <Image src="/media/logo-va.png" alt="" width={34} height={36} priority />
-            VATEA
+            <Image src="/media/vatea-nom.svg" alt="" width={76} height={18} className="brand-nom" priority unoptimized />
           </Link>
           <nav className="nav" aria-label="Navigation principale">
             {NAV.map((item) => (

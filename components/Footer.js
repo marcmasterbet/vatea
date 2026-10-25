@@ -10,7 +10,7 @@ export default function Footer() {
         <div className="footer-grid">
           <p style={{ display: 'flex', alignItems: 'center', gap: 14, fontFamily: 'var(--font-cinzel), serif', fontWeight: 700, fontSize: 24, letterSpacing: '.1em' }}>
             <Image src="/media/logo-va.png" alt="" width={44} height={47} />
-            VATEA
+            <Image src="/media/vatea-nom.svg" alt="VATEA" width={93} height={22} className="brand-nom" unoptimized />
           </p>
           <nav aria-label="Liens légaux" style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14 }}>
             <Link href="/mentions-legales">Mentions légales</Link>

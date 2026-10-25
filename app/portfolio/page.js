@@ -40,7 +40,7 @@ export default function PortfolioPage() {
         <div className="container content">
           <div className="inner">
             <span className="rule rule-lg" aria-hidden="true" />
-            <h1 id="titre-portfolio" className="h1" style={{ marginBottom: 22, textShadow: '0 2px 24px rgba(0,0,0,.5)' }}>Portfolio vidéo à Bruxelles : <span className="gold">découvrez nos réalisations.</span></h1>
+            <h1 id="titre-portfolio" className="h1" style={{ marginBottom: 22, textShadow: '0 2px 24px rgba(18, 18, 18,.5)' }}>Portfolio vidéo à Bruxelles : <span className="gold">découvrez nos réalisations.</span></h1>
             <p className="lead" style={{ maxWidth: 600, marginBottom: 14 }}>Films corporate, vidéos publicitaires et contenus de formation : découvrez le savoir-faire audiovisuel de VATEA à travers nos productions.</p>
             <p className="sub" style={{ maxWidth: 600, marginBottom: 30 }}>Basé à Bruxelles, j'accompagne les entreprises partout en Belgique et dans le nord de la France.</p>
             <a className="btn btn-gold" href="#galerie-corporate">Découvrir nos réalisations</a>

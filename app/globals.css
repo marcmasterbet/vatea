@@ -7,7 +7,7 @@
   --font-manrope: 'Manrope Variable', 'Manrope';
   --font-cinzel: 'Cinzel';
   --noir: #121212;
-  --noir-2: #0b0b0b;
+  --noir-2: #121212;
   --prune: #160d1a;
   --or: #c9a86a;
   --or-clair: #e2c68f;
@@ -71,6 +71,8 @@ p { margin: 0; }
 .header-inner { max-width: var(--max); margin: 0 auto; padding: 18px var(--gutter); display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .brand { display: inline-flex; align-items: center; gap: 12px; font-family: var(--font-cinzel), serif; font-weight: 700; font-size: 21px; letter-spacing: .1em; color: #fff; text-decoration: none; }
 .brand:hover { color: #fff; }
+/* Nom VATEA : écriture officielle (Telugu MN vectorisée, fournie par Hugo) */
+.brand-nom { display: block; height: auto; }
 .nav { display: flex; align-items: center; gap: 22px; }
 .nav-link { color: #fff; text-decoration: none; font-size: 13px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; padding: 12px 2px; transition: color .2s ease; }
 .nav-link:hover, .nav-link[aria-current="page"] { color: var(--or); }
@@ -117,7 +119,7 @@ p { margin: 0; }
 .diff-card em { font-weight: 800; }
 .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: clamp(18px, 2.2vw, 30px); }
 
-.framed-box { margin: 0 auto; max-width: 1080px; padding: clamp(25px, 3.5vw, 45px) clamp(17px, 4.2vw, 56px); border: 1px solid rgba(139, 139, 139, .45); border-radius: 26px; box-shadow: 0 4px 30px 6px rgba(0, 0, 0, .9); text-align: center; display: flex; flex-direction: column; align-items: center; }
+.framed-box { margin: 0 auto; max-width: 1080px; padding: clamp(25px, 3.5vw, 45px) clamp(17px, 4.2vw, 56px); border: 1px solid rgba(139, 139, 139, .45); border-radius: 26px; box-shadow: 0 4px 30px 6px rgba(18, 18, 18, .9); text-align: center; display: flex; flex-direction: column; align-items: center; }
 .band-prune { background: linear-gradient(180deg, var(--noir) 0%, var(--prune) 30%, var(--prune) 70%, var(--noir) 100%); }
 .cta-box { padding: clamp(34px, 4.2vw, 62px) clamp(17px, 3.5vw, 56px); border-radius: 26px; border: 1px solid var(--or); background: radial-gradient(ellipse at 50% 0%, rgba(201, 168, 106, .18) 0%, rgba(22, 13, 26, .6) 55%, var(--prune) 100%); text-align: center; display: flex; flex-direction: column; align-items: center; }
 .aside-q { padding-left: 20px; border-left: 2px solid var(--or); font-size: clamp(17px, 1.5vw, 20px); font-weight: 600; line-height: 1.55; color: #fff; }
@@ -166,13 +168,13 @@ p { margin: 0; }
 .devis .fade-y { position: absolute; inset: 0; z-index: 1; background: linear-gradient(180deg, var(--noir) 0%, rgba(18, 18, 18, 0) 16%, rgba(11, 10, 12, 0) 82%, var(--noir-2) 100%); }
 .devis .content { position: relative; z-index: 2; }
 .devis-col { max-width: 460px; }
-.glass { padding: clamp(16px, 2vw, 24px); border-radius: 18px; border: 1px solid rgba(201, 168, 106, .35); background: rgba(14, 12, 15, .55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 30px 80px rgba(0, 0, 0, .55); }
+.glass { padding: clamp(16px, 2vw, 24px); border-radius: 18px; border: 1px solid rgba(201, 168, 106, .35); background: rgba(14, 12, 15, .55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 30px 80px rgba(18, 18, 18, .55); }
 .f-label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--or); }
 .field { width: 100%; min-height: 38px; padding: 6px 2px; border: 0; border-bottom: 1px solid rgba(255, 255, 255, .28); border-radius: 0; background: transparent; color: #fff; font-family: inherit; font-size: 15px; font-weight: 500; letter-spacing: normal; text-transform: none; transition: border-color .25s ease; }
 .field:focus { outline: none; border-bottom-color: var(--or); }
 .field::placeholder { color: #8f8f8f; }
 textarea.field { resize: vertical; min-height: 64px; }
-.pill { min-height: 32px; padding: 0 13px; border-radius: 999px; border: 1px solid rgba(201, 168, 106, .45); background: rgba(0, 0, 0, .25); color: #fff; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
+.pill { min-height: 32px; padding: 0 13px; border-radius: 999px; border: 1px solid rgba(201, 168, 106, .45); background: rgba(18, 18, 18, .25); color: #fff; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color .2s ease, color .2s ease, border-color .2s ease; }
 .pill:hover { border-color: var(--or); }
 .pill[aria-checked="true"] { background: var(--or); color: var(--noir); border-color: var(--or); }
 .more { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 0; background: transparent; border: 0; color: var(--or); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -190,14 +192,14 @@ textarea.field { resize: vertical; min-height: 64px; }
 .social { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--or); display: inline-flex; align-items: center; justify-content: center; color: var(--or) !important; }
 
 /* ---------- Bouton haut de page ---------- */
-.to-top { position: fixed; right: clamp(16px, 2.5vw, 32px); bottom: clamp(16px, 2.5vw, 32px); z-index: 40; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--or); background: rgba(18, 18, 18, .85); color: var(--or); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 30px rgba(0, 0, 0, .5), 0 0 24px rgba(201, 168, 106, .18); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.to-top { position: fixed; right: clamp(16px, 2.5vw, 32px); bottom: clamp(16px, 2.5vw, 32px); z-index: 40; width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--or); background: rgba(18, 18, 18, .85); color: var(--or); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 10px 30px rgba(18, 18, 18, .5), 0 0 24px rgba(201, 168, 106, .18); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 
 /* ─── Vidéo de présentation (accueil) ─── */
 .section-video { padding-bottom: clamp(30px, 4vw, 60px); }
 .video-tete { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px; margin-bottom: clamp(24px, 3vw, 40px); }
 .video-cadre { max-width: 1180px; margin: 0 auto; }
 .video-cadre .ph { border-radius: 14px; }
-.video-pres { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; border: 0; padding: 0; position: relative; }
+.video-pres { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #121212; border: 0; padding: 0; position: relative; }
 .video-pres iframe { width: 100%; height: 100%; border: 0; display: block; }
 video.video-pres { object-fit: contain; }
 .video-facade { cursor: pointer; }

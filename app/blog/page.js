@@ -20,7 +20,7 @@ export default function BlogPage() {
         <div className="container content">
           <div className="inner" style={{ maxWidth: 620 }}>
             <span className="rule rule-lg" aria-hidden="true" />
-            <h1 id="titre-blog" className="h1" style={{ marginBottom: 22, textShadow: '0 2px 24px rgba(0,0,0,.5)' }}>Production vidéo : <span className="gold">les conseils pour réussir vos projets.</span></h1>
+            <h1 id="titre-blog" className="h1" style={{ marginBottom: 22, textShadow: '0 2px 24px rgba(18, 18, 18,.5)' }}>Production vidéo : <span className="gold">les conseils pour réussir vos projets.</span></h1>
             <p className="lead" style={{ maxWidth: 580, marginBottom: 30 }}>Corporate, publicité, formation : découvrez nos conseils pour concevoir des vidéos d'entreprise qui transmettent le bon message.</p>
             <a className="btn btn-gold" href="#articles">Découvrir nos articles</a>
           </div>
