@@ -14,17 +14,19 @@ export default function Footer() {
           </p>
           <nav aria-label="Liens légaux" style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14 }}>
             <Link href="/mentions-legales">Mentions légales</Link>
-            <Link href="/politique-de-confidentialite">Politique de confidentialité</Link>
-            <Link href="/cookies">Paramètres des cookies</Link>
+            <Link href="/politique-de-confidentialite">Politique de confidentialité et cookies</Link>
+            <Link href="/conditions-d-utilisation">Conditions d’utilisation</Link>
+            <Link href="/conditions-generales">Conditions générales</Link>
           </nav>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 14, color: 'var(--texte-2)' }}>
-            <span>{CONTACT.email}</span>
-            <span>{CONTACT.phone}</span>
+            <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
+            <a href={`tel:${CONTACT.phoneHref}`}>{CONTACT.phone}</a>
             <span>{CONTACT.address}</span>
+            <span>TVA {CONTACT.tva}</span>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <a href={CONTACT.instagram} className="social" aria-label="Instagram"><IconInstagram /></a>
-            <a href={CONTACT.linkedin} className="social" aria-label="LinkedIn"><IconLinkedin /></a>
+            <a href={CONTACT.instagram} className="social" aria-label="Instagram" target="_blank" rel="noopener noreferrer"><IconInstagram /></a>
+            <a href={CONTACT.linkedin} className="social" aria-label="LinkedIn" target="_blank" rel="noopener noreferrer"><IconLinkedin /></a>
           </div>
         </div>
         <p style={{ marginTop: 36, fontSize: 12, color: '#8f8f8f' }}>© VATEA</p>

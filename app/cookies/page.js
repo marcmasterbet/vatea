@@ -1,7 +1,6 @@
-import LegalPage from '@/components/LegalPage';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Paramètres des cookies', robots: { index: false } };
-
+// Les cookies sont décrits dans la politique de confidentialité (section 11).
 export default function Page() {
-  return <LegalPage title="Paramètres des cookies" />;
+  redirect('/politique-de-confidentialite#11-cookies');
 }

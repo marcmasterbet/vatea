@@ -1,7 +1,7 @@
-import LegalPage from '@/components/LegalPage';
+import LegalPage, { lireTexteLegal } from '@/components/LegalPage';
 
-export const metadata = { title: 'Politique de confidentialité', robots: { index: false } };
+export const metadata = { title: lireTexteLegal('politique-de-confidentialite').titre, alternates: { canonical: '/politique-de-confidentialite' }, robots: { index: false } };
 
 export default function Page() {
-  return <LegalPage title="Politique de confidentialité" />;
+  return <LegalPage slug="politique-de-confidentialite" />;
 }

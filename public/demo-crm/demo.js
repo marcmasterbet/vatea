@@ -244,7 +244,7 @@
   function devisEnvoyesHt() { return r2(S.prospects.filter(function (p) { return p.etape === 'devis_envoye' && p.devis && !p.devis.dateSignature; }).reduce(function (t, p) { return t + p.devis.montantHt; }, 0)); }
   function alertesPreuve() {
     return lignesCommission().filter(function (l) { return l.el.ok && !l.preuveOk; }).map(function (l) {
-      return { titre: 'Preuve de signature manquante', texte: l.p.entreprise + ' — ' + l.type.toLowerCase() + ' ' + l.ref + ' signé le ' + dfr(l.date) + ' (' + eur0(l.ht) + ' HT). La commission ne pourra être confirmée payée qu’une fois la preuve jointe.', pid: l.p.id };
+      return { titre: 'Preuve de signature manquante', texte: l.p.entreprise + ' — ' + l.type.toLowerCase() + ' ' + l.ref + ' signé le ' + dfr(l.date) + ' (' + eur0(l.ht) + ' HT). La commission ne pourra être confirmée payée qu’une fois la preuve jointe par Hugo ou Jeff.', pid: l.p.id };
     });
   }
 
@@ -326,6 +326,55 @@
     if (p.devis && p.devis.dateSignature && !(p.devis.docPreuve && doc(p.devis.docPreuve))) c.push({ obj: p.devis, libelle: 'devis ' + p.devis.ref });
     (p.avenants || []).forEach(function (a) { if (!(a.docPreuve && doc(a.docPreuve))) c.push({ obj: a, libelle: 'avenant ' + a.ref }); });
     return c;
+  }
+  function peutJoindrePreuve() { return !!ecriture(); } // Hugo, Jeff (même interface) et l'admin ; pas le compte consultation
+  function libelleCible(p, cle) {
+    if (cle === 'devis') return 'devis ' + p.devis.ref;
+    var a = (p.avenants || []).find(function (x) { return x.id === cle; }); return a ? 'avenant ' + a.ref : '';
+  }
+  /** À quoi sert ce document comme preuve (ex. « devis DEV-2026-011 »), ou '' s'il n'est rattaché à rien. */
+  function usagePreuve(id) {
+    var r = [];
+    S.prospects.forEach(function (p) {
+      if (p.devis && p.devis.docPreuve === id) r.push('devis ' + p.devis.ref);
+      (p.avenants || []).forEach(function (a) { if (a.docPreuve === id) r.push('avenant ' + a.ref); });
+    });
+    return r.join(', ');
+  }
+  /**
+   * Fenêtre unique pour joindre une preuve de signature : soit un document déjà présent dans la fiche,
+   * soit un nouveau fichier de l'ordinateur. Utilisée depuis la fiche, l'onglet Documents et l'onglet Commissions.
+   */
+  function modaleJoindrePreuve(p, cle, docPropose) {
+    var cibles = ciblesSansPreuve(p).map(function (c) { return { cle: c.obj === p.devis ? 'devis' : c.obj.id, libelle: c.libelle }; });
+    if (cle && !cibles.some(function (c) { return c.cle === cle; })) cibles.unshift({ cle: cle, libelle: libelleCible(p, cle) });
+    if (!cibles.length) return toast('Toutes les signatures de ce dossier ont déjà leur preuve.');
+    var choisie = cibles.find(function (c) { return c.cle === cle; }) || cibles[0];
+    var docs = S.documents.filter(function (x) { return x.pid === p.id; });
+    var optCible = cibles.map(function (c) { return 'Signature du ' + c.libelle; });
+    var NOUVEAU = 'Un nouveau fichier de mon ordinateur';
+    var optDocs = docs.map(function (x, i) { return (i + 1) + '. ' + x.nom + ' (' + x.type + ')'; });
+    var docDefaut = docPropose ? optDocs[docs.findIndex(function (x) { return x.id === docPropose; })] : (optDocs.length ? '' : NOUVEAU);
+    var champs = [];
+    if (cibles.length > 1) champs.push({ k: 'cible', label: 'Preuve de quelle signature ?', type: 'select', options: optCible, req: true, val: 'Signature du ' + choisie.libelle });
+    champs.push({ k: 'source', label: 'Document', type: 'select', options: optDocs.concat([NOUVEAU]), req: true, val: docDefaut, aide: optDocs.length ? 'Choisissez le fichier déjà ajouté dans la fiche, ou un nouveau fichier.' : '' });
+    champs.push({ k: 'fichier', label: 'Nouveau fichier (si « nouveau fichier » est choisi)', type: 'file' });
+    ouvrirModale({ titre: 'Joindre la preuve de signature', texte: (cibles.length > 1 ? '' : 'Pour le <b>' + esc(choisie.libelle) + '</b>. ') + 'Devis accepté, bon de commande, contrat ou e-mail d’accord.', bouton: 'Valider la preuve', champs: champs,
+      onOk: function (v, f) {
+        var c = cibles.length > 1 ? cibles[optCible.indexOf(v.cible)] : choisie;
+        if (!c) return 'Choisissez la signature concernée.';
+        var id;
+        if (v.source === NOUVEAU) {
+          if (!f.fichier) return 'Choisissez le fichier sur votre ordinateur.';
+          id = ajouterDocument(p.id, f.fichier, 'Preuve de signature');
+        } else {
+          var d = docs[optDocs.indexOf(v.source)]; if (!d) return 'Choisissez un document.';
+          id = d.id; if (d.type !== 'Preuve de signature' && d.type !== 'Bon de commande / contrat') d.type = 'Preuve de signature';
+        }
+        if (c.cle === 'devis') p.devis.docPreuve = id; else p.avenants.forEach(function (a) { if (a.id === c.cle) a.docPreuve = id; });
+        journaliser('Preuve de signature rattachée', p.id, c.libelle + ' — ' + doc(id).nom);
+        sauver(); o_apres = function () { rendre(); toast('Preuve validée pour le ' + c.libelle + ' : la commission peut être confirmée.'); }; return null;
+      } });
   }
   function rattacherPreuve(p, docId) {
     var c = ciblesSansPreuve(p)[0];
@@ -557,7 +606,7 @@
     if (!l.el.ok) return '<span class="pastille p-neutre">Non éligible</span>';
     if (paye) return '<span class="pastille p-ok" title="Figée">🔒 ' + (negatif ? 'Déduite' : 'Payée') + ' le ' + dfr(paye.date) + '</span>';
     if (m.id === beneficiaire) {
-      if (!l.preuveOk) return '<span class="pastille p-warn" title="Joindre la preuve de signature dans la fiche">Preuve manquante</span>';
+      if (!l.preuveOk) return '<span class="pastille p-warn" title="Hugo ou Jeff doit joindre la preuve de signature">Preuve manquante</span>';
       return '<button type="button" class="btn btn-petit btn-or" data-act="com-payee" data-l="' + l.id + '" data-b="' + cle + '">' + (negatif ? 'Confirmer la déduction' : 'J’ai été payé') + '</button>';
     }
     return '<span class="pastille ' + (l.preuveOk ? 'p-warn' : 'p-bad') + '">' + (negatif ? 'À déduire' : 'À payer') + (l.preuveOk ? '' : ' · preuve manquante') + '</span>';
@@ -593,7 +642,7 @@
     var el = L.filter(function (l) { return l.el.ok; });
     h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Signé le</th><th>Client / devis</th><th class="num">HT signé</th><th class="num' + cj + '">JEGO 16 % du HT</th><th class="num' + cm + '">Marc 9 % du HT</th><th>Preuve</th><th class="' + cj.trim() + '">JEGO</th><th class="' + cm.trim() + '">Marc</th></tr></thead><tbody>' +
       L.map(function (l) {
-        var preuve = l.preuve === 'sans-objet' ? '—' : l.preuveOk ? '<button type="button" class="lien" data-act="doc-dl" data-d="' + l.preuve + '">📎 Ouvrir</button>' : '<span class="fichier manquant">Manquante</span>';
+        var preuve = l.preuve === 'sans-objet' ? '—' : l.preuveOk ? '<button type="button" class="lien" data-act="doc-dl" data-d="' + l.preuve + '">📎 Ouvrir</button>' : (peutJoindrePreuve() ? '<button type="button" class="btn btn-petit btn-or" data-act="joindre-preuve" data-p="' + l.p.id + '" data-cible="' + (l.type === 'Devis' ? 'devis' : l.id.replace('avenant-', '')) + '">Joindre</button>' : '<span class="fichier manquant" title="À joindre par Hugo ou Jeff">Manquante</span>');
         return '<tr><td>' + dfr(l.date) + '<div class="aide" style="margin-top:2px">' + l.type + '</div></td>' +
           '<td><a href="#" data-act="fiche" data-id="' + l.p.id + '" data-onglet="devis">' + esc(l.p.entreprise) + '</a><div class="aide" style="margin-top:2px">' + esc(l.ref) + (l.objet ? ' · ' + esc(l.objet) : '') + (l.el.ok ? '' : ' · ' + l.el.raison) + '</div></td>' +
           '<td class="num">' + eur(l.ht) + '</td><td class="num' + cj + '">' + (l.el.ok ? eur(l.j) : '—') + '</td><td class="num' + cm + '">' + (l.el.ok ? eur(l.m) : '—') + '</td>' +
@@ -687,14 +736,14 @@
         corps += '<div class="info-ligne"><span>Référence</span><b>' + esc(d.ref) + '</b></div><div class="info-ligne"><span>Envoyé le</span><span>' + dfr(d.dateEnvoi) + '</span></div><div class="info-ligne"><span>Montant HT</span><b>' + eur(d.montantHt) + '</b></div>' +
           '<div class="info-ligne"><span>Statut</span><span class="pastille ' + (p.annulation ? 'p-bad' : d.dateSignature ? 'p-ok' : p.etape === 'perdu' ? 'p-bad' : 'p-info') + '">' + (p.annulation ? 'Annulé le ' + dfr(p.annulation.date) : d.dateSignature ? 'Signé' : p.etape === 'perdu' ? 'Refusé' : 'Envoyé') + '</span></div>';
         if (d.dateSignature) corps += '<div class="info-ligne"><span>Signé le</span><b>' + dfr(d.dateSignature) + '</b></div><div class="info-ligne"><span>Preuve</span><span>' + esc(d.typePreuve) + '</span></div>' +
-          '<div class="info-ligne"><span>Fichier</span>' + (d.docPreuve && doc(d.docPreuve) ? lienDoc(d.docPreuve) : (w ? '<button type="button" class="btn btn-petit" data-act="joindre-preuve" data-cible="devis">Joindre la preuve</button>' : '<span class="fichier manquant">À joindre</span>')) + '</div>';
+          '<div class="info-ligne"><span>Fichier</span>' + (d.docPreuve && doc(d.docPreuve) ? lienDoc(d.docPreuve) : (peutJoindrePreuve() ? '<button type="button" class="btn btn-petit btn-or" data-act="joindre-preuve" data-cible="devis">Joindre la preuve</button>' : '<span class="fichier manquant">À joindre</span>')) + '</div>';
         else if (w && p.etape !== 'perdu') corps += '<div><button type="button" class="btn btn-petit" data-act="f-signer">Marquer comme signé</button></div>';
       }
       corps += '</div>';
       if (d && d.dateSignature) {
         corps += '<div class="bloc"><div class="bloc-titre">Avenants signés</div>' + ((p.avenants || []).length ? p.avenants.map(function (a) {
           return '<div class="mvt"><span>' + dfr(a.date) + '</span><span class="ref">' + esc(a.ref) + (a.objet ? ' · ' + esc(a.objet) : '') + '</span><b class="num">' + eur(a.montantHt) + ' HT</b>' +
-            (a.docPreuve && doc(a.docPreuve) ? lienDoc(a.docPreuve, 'Preuve') : (w ? '<button type="button" class="btn btn-petit" data-act="joindre-preuve" data-cible="' + a.id + '">Joindre la preuve</button>' : '<span class="fichier manquant">Preuve manquante</span>')) + '</div>';
+            (a.docPreuve && doc(a.docPreuve) ? lienDoc(a.docPreuve, 'Preuve') : (peutJoindrePreuve() ? '<button type="button" class="btn btn-petit btn-or" data-act="joindre-preuve" data-cible="' + a.id + '">Joindre la preuve</button>' : '<span class="fichier manquant">Preuve manquante</span>')) + '</div>';
         }).join('') : '<p class="aide" style="margin:0">Aucun avenant.</p>') +
           (w && !p.annulation ? '<div><button type="button" class="btn btn-petit" data-act="f-avenant">+ Avenant signé</button></div>' : '') + '</div>';
         corps += '<div class="bloc"><div class="bloc-titre">Commissions de ce dossier</div>' + (el.ok ? lc.map(function (l) {
@@ -709,13 +758,14 @@
       corps += '</div>';
     } else if (o === 'documents') {
       var ds = S.documents.filter(function (x) { return x.pid === p.id; }).sort(function (a, b) { return a.le < b.le ? 1 : -1; });
-      corps = '<div class="panneau-corps">' + (w ? '<div class="depot-type"><label class="lbl" for="type-doc">Type des documents ajoutés</label><select class="champ" id="type-doc" data-input="typeDoc">' + TYPES_DOC.map(function (t) { return '<option' + (t === (ui.typeDoc || 'Autre') ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></div>' +
+      var manquent = ciblesSansPreuve(p);
+      corps = '<div class="panneau-corps">' + (manquent.length ? '<div class="bandeau-preuve"><div><b>Preuve de signature manquante</b><span>' + manquent.map(function (c) { return esc(c.libelle); }).join(', ') + ' : la commission ne peut pas être confirmée tant que la preuve n’est pas validée.</span></div>' + (peutJoindrePreuve() ? '<button type="button" class="btn btn-petit btn-or" data-act="joindre-preuve">Joindre / valider la preuve</button>' : '') + '</div>' : '') + (w ? '<div class="depot-type"><label class="lbl" for="type-doc">Type des documents ajoutés</label><select class="champ" id="type-doc" data-input="typeDoc">' + TYPES_DOC.map(function (t) { return '<option' + (t === (ui.typeDoc || 'Autre') ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></div>' +
         '<label class="depot" data-depot><input type="file" multiple data-input="depot" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" hidden /><b>Ajouter des documents</b><span>Cliquez ou glissez vos fichiers ici · PDF, images, Word, Excel · 10 Mo max</span></label>' : '') +
         (ds.length ? '<ul class="docs">' + ds.map(function (x) {
           return '<li><span class="doc-icone">' + (x.mime.indexOf('pdf') >= 0 ? 'PDF' : x.mime.indexOf('image') >= 0 ? 'IMG' : 'DOC') + '</span><div class="doc-info"><b>' + esc(x.nom) + '</b><span>' + esc(x.type) + ' · ' + taille(x.taille) + ' · ajouté le ' + esc(dheure(x.le)) + ' par ' + esc(x.auteur) + '</span></div>' +
             '<button type="button" class="btn btn-petit" data-act="doc-dl" data-d="' + x.id + '">Télécharger</button>' +
-            (w && !preuveUtilisee(x.id) && ciblesSansPreuve(p).length ? '<button type="button" class="btn btn-petit btn-or" data-act="doc-preuve" data-d="' + x.id + '" title="Rattacher ce fichier comme preuve de signature du ' + esc(ciblesSansPreuve(p)[0].libelle) + '">Utiliser comme preuve de signature</button>' : '') +
-            (preuveUtilisee(x.id) ? '<span class="pastille p-ok" title="Rattaché comme preuve de signature">Preuve de signature ✓</span>' : '') + (estAdmin() ? '<button type="button" class="btn btn-petit btn-danger" data-act="doc-suppr" data-d="' + x.id + '">Supprimer</button>' : '') + '</li>';
+            (peutJoindrePreuve() && !preuveUtilisee(x.id) && manquent.length ? '<button type="button" class="btn btn-petit btn-or" data-act="doc-preuve" data-d="' + x.id + '">Utiliser comme preuve de signature</button>' : '') +
+            (preuveUtilisee(x.id) ? '<span class="pastille p-ok" title="Rattaché comme preuve de signature">✓ Preuve du ' + esc(usagePreuve(x.id)) + '</span>' : '') + (estAdmin() ? '<button type="button" class="btn btn-petit btn-danger" data-act="doc-suppr" data-d="' + x.id + '">Supprimer</button>' : '') + '</li>';
         }).join('') + '</ul>' : '<p class="vide">Aucun document pour ce client.</p>') + '</div>';
     } else {
       var j = S.journal.filter(function (x) { return x.pid === p.id; });
@@ -972,6 +1022,11 @@
     });
     sauver(); rendre();
     if (rattaches.length) toast('Preuve rattachée au ' + rattaches.join(', ') + ' : la commission peut être confirmée.');
+    else if (ok && ciblesSansPreuve(p).length) {
+      // Fichier ajouté avec un autre type (ex. « Devis ») alors qu'une preuve manque : on demande explicitement.
+      var dernier = S.documents[S.documents.length - 1];
+      confirmer('Est-ce la preuve de signature ?', 'Il manque la preuve de signature du <b>' + esc(ciblesSansPreuve(p)[0].libelle) + '</b>. Le fichier « ' + esc(dernier.nom) + ' » est-il ce document signé ?', 'Oui, c’est la preuve', function () { modaleJoindrePreuve(p, null, dernier.id); });
+    }
     else if (ok) toast(ok + ' document(s) ajouté(s).');
     if (refus.length) toast('Trop lourd (10 Mo max) : ' + refus.join(', '), true);
   }
@@ -1056,26 +1111,9 @@
           } });
         break;
       }
-      case 'joindre-preuve': {
-        var pj = prospect(ui.fiche.id), cible = t.dataset.cible;
-        ouvrirModale({ titre: 'Joindre la preuve de signature', texte: 'Devis accepté, bon de commande ou contrat. Le fichier est ajouté aux documents du client.', bouton: 'Joindre',
-          champs: [{ k: 'fichier', label: 'Fichier', type: 'file', req: true }],
-          onOk: function (v, f) {
-            var id = ajouterDocument(pj.id, f.fichier, 'Preuve de signature');
-            if (cible === 'devis') pj.devis.docPreuve = id; else pj.avenants.forEach(function (a) { if (a.id === cible) a.docPreuve = id; });
-            journaliser('Preuve de signature jointe', pj.id, f.fichier.name);
-            sauver(); o_apres = rendre; return null;
-          } });
-        break;
-      }
+      case 'joindre-preuve': modaleJoindrePreuve(prospect(t.dataset.p ? Number(t.dataset.p) : ui.fiche.id), t.dataset.cible, t.dataset.d); break;
       case 'doc-dl': telechargerDocument(t.dataset.d); break;
-      case 'doc-preuve': {
-        var pd = prospect(ui.fiche.id), dd2 = doc(t.dataset.d), lib = rattacherPreuve(pd, dd2.id);
-        if (dd2.type !== 'Preuve de signature') dd2.type = 'Preuve de signature';
-        sauver(); rendre();
-        if (lib) toast('Preuve rattachée au ' + lib + ' : la commission peut être confirmée.');
-        break;
-      }
+      case 'doc-preuve': modaleJoindrePreuve(prospect(ui.fiche.id), null, t.dataset.d); break;
       case 'doc-suppr': {
         var dd = doc(t.dataset.d);
         confirmer('Supprimer ce document ?', esc(dd.nom) + ' sera supprimé. La suppression est inscrite dans l’historique.', 'Supprimer', function () {

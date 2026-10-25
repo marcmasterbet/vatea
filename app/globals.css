@@ -207,3 +207,14 @@ video.video-pres { object-fit: contain; }
 .video-facade:hover img { transform: scale(1.02); opacity: 1; }
 .video-facade .play { position: absolute; inset: 0; margin: auto; }
 @media (max-width: 600px) { .gold-frame.video-cadre { padding: 6px; border-radius: 16px; } }
+
+/* Pages juridiques */
+.legal { color: var(--texte-2); font-size: 16px; line-height: 1.75; }
+.legal p { margin: 0 0 16px; }
+.legal .legal-maj { font-style: italic; font-size: 14px; color: #8f8f8f; margin-bottom: 32px; }
+.legal .legal-h2 { color: var(--texte, #f0f0f0); font-size: clamp(19px, 2.2vw, 23px); line-height: 1.3; margin: 40px 0 14px; scroll-margin-top: 110px; }
+.legal .legal-h3 { color: var(--texte, #f0f0f0); font-size: 17px; margin: 24px 0 10px; }
+.legal .legal-liste { margin: 0 0 16px; padding-left: 22px; }
+.legal .legal-liste li { margin-bottom: 6px; }
+.legal a { color: var(--texte, #f0f0f0); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.legal strong { color: var(--texte, #f0f0f0); }

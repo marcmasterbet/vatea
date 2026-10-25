@@ -344,3 +344,8 @@ select option:disabled { color: #6c6660; }
 .voir-plus:hover { border-color: var(--or); }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 12px 0; font-size: 13px; color: var(--texte-2); }
 @media (max-width: 760px) { .corresp, .bilan { grid-template-columns: 1fr 1fr; } }
+
+/* Preuve de signature manquante (onglet Documents) */
+.bandeau-preuve { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 14px 16px; margin-bottom: 16px; border: 1px solid rgba(229, 103, 77, .45); border-left: 3px solid #e5674d; border-radius: 12px; background: rgba(229, 103, 77, .08); }
+.bandeau-preuve b { display: block; margin-bottom: 2px; }
+.bandeau-preuve span { font-size: 13px; opacity: .85; }

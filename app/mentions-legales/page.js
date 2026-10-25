@@ -1,7 +1,7 @@
-import LegalPage from '@/components/LegalPage';
+import LegalPage, { lireTexteLegal } from '@/components/LegalPage';
 
-export const metadata = { title: 'Mentions légales', robots: { index: false } };
+export const metadata = { title: lireTexteLegal('mentions-legales').titre, alternates: { canonical: '/mentions-legales' }, robots: { index: false } };
 
 export default function Page() {
-  return <LegalPage title="Mentions légales" />;
+  return <LegalPage slug="mentions-legales" />;
 }

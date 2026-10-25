@@ -23,8 +23,8 @@ export default function DevisSection() {
             <DevisForm />
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 28px', marginTop: 14, fontSize: 13, color: '#d2d2d2' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--or)' }}><IconMail /><span style={{ color: '#d2d2d2' }}>{CONTACT.email}</span></span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--or)' }}><IconPhone /><span style={{ color: '#d2d2d2' }}>{CONTACT.phone}</span></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--or)' }}><IconMail /><a href={`mailto:${CONTACT.email}`} style={{ color: '#d2d2d2' }}>{CONTACT.email}</a></span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--or)' }}><IconPhone /><a href={`tel:${CONTACT.phoneHref}`} style={{ color: '#d2d2d2' }}>{CONTACT.phone}</a></span>
           </div>
         </div>
       </div>

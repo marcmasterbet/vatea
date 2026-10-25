@@ -65,8 +65,8 @@ export default function Header() {
           ))}
           <a href="#contact" className="btn btn-gold" style={{ marginTop: 32, width: '100%' }} onClick={() => setOpen(false)}>{CTA_DEVIS}</a>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 28, fontSize: 14, color: '#bdbdbd' }}>
-            <span>{CONTACT.email}</span>
-            <span>{CONTACT.phone}</span>
+            <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
+            <a href={`tel:${CONTACT.phoneHref}`}>{CONTACT.phone}</a>
           </div>
         </nav>
       )}

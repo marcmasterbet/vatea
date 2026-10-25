@@ -94,7 +94,7 @@ export default function DevisForm() {
 
       <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, lineHeight: 1.45, color: '#d2d2d2', cursor: 'pointer' }}>
         <input type="checkbox" name="consentement" required style={{ width: 18, height: 18, margin: '2px 0 0', flex: '0 0 auto', accentColor: 'var(--or)' }} />
-        <span>[Texte de consentement RGPD à valider] — j'accepte que mes données soient utilisées pour traiter ma demande. <a href="/politique-de-confidentialite">Politique de confidentialité</a></span>
+        <span>J’accepte que VATEA utilise ces informations pour répondre à ma demande et, le cas échéant, préparer une proposition ou un devis. Voir la <a href="/politique-de-confidentialite">Politique de confidentialité</a></span>
       </label>
 
       {status === 'error' && <p role="alert" style={{ fontSize: 13, color: '#f0b4a0' }}>{error}. Réessayez ou écrivez-nous directement.</p>}
