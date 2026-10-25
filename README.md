@@ -86,6 +86,11 @@ visiteur (bouton « Réinitialiser »). Fichiers : `public/demo-crm/` (index.htm
   (ajout depuis l'ordinateur, glisser-déposer, téléchargement) ; modifications tracées avec ancienne et nouvelle valeur.
 - **Pas de retour en arrière** dans le pipeline (perdu réactivable à son étape d'avant ; correction réservée à l'admin, tracée).
 - Calendrier des champs date visible sur tous les navigateurs ; « 📧 Simuler la campagne » (Nouveau → Contacté automatique).
+- **Import de contacts** (« ⬆ Importer des contacts ») : fichier Excel (.xlsx) ou CSV, colonnes reconnues automatiquement
+  (modifiables), aperçu, bilan avant création (doublons CRM / fichier, e-mails invalides), fiches créées en « Nouveau » avec la
+  source choisie ; modèle CSV téléchargeable. Lecture faite dans le navigateur, sans bibliothèque externe.
+- **Gros volumes** : 25 cartes par colonne du Kanban + lien « Voir les N autres en liste » ; liste paginée (100) avec filtre
+  par étape ; campagne simulée par groupes de source. Testé avec 2 500 contacts.
 
 ## Images
 

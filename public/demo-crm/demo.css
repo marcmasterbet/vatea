@@ -326,3 +326,21 @@ select option:disabled { color: #6c6660; }
 .titre-logo span { font-size: 15px; letter-spacing: .3em; color: var(--or); }
 @media (max-width: 760px) { .marque img.nom { width: 64px; } }
 .nav a { white-space: nowrap; }
+
+/* ─── Import de contacts / gros volumes ─── */
+.modale.modale-large { width: min(760px, 100%); }
+.corresp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+.corresp label { display: block; }
+.ligne-entete { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--texte-2); }
+.ligne-entete input { accent-color: #c9a86a; }
+.bilan { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.bilan div { border: 1px solid var(--ligne); border-radius: 10px; padding: 10px; text-align: center; }
+.bilan b { display: block; font-size: 22px; }
+.bilan span { font-size: 11.5px; color: var(--texte-3); }
+.bilan .ok { border-color: rgba(62,207,142,.5); background: rgba(62,207,142,.07); } .bilan .ok b { color: #8ff0c4; }
+.bilan .ko b { color: #ffb3a3; }
+.apercu table { min-width: 0; font-size: 12.5px; }
+.voir-plus { width: 100%; padding: 10px; border: 1px dashed var(--ligne-2); border-radius: 10px; background: none; color: var(--or-clair); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.voir-plus:hover { border-color: var(--or); }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 12px 0; font-size: 13px; color: var(--texte-2); }
+@media (max-width: 760px) { .corresp, .bilan { grid-template-columns: 1fr 1fr; } }

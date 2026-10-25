@@ -163,14 +163,33 @@
   /* ───────────── État ───────────── */
   var S;
   function charger() {
-    try { var t = localStorage.getItem(CLE); if (t) { var o = JSON.parse(t); if (o && o.v === 3) return o; } } catch (e) { /* stockage indisponible */ }
+    try {
+      var t = localStorage.getItem(CLE);
+      if (t) {
+        var o = JSON.parse(t);
+        if (o && o.v === 3) {
+          // Rattrapage : une preuve ajoutée depuis l'onglet Documents n'était pas reliée au devis
+          var utilises = {};
+          o.prospects.forEach(function (p) { if (p.devis && p.devis.docPreuve) utilises[p.devis.docPreuve] = 1; (p.avenants || []).forEach(function (a) { if (a.docPreuve) utilises[a.docPreuve] = 1; }); });
+          o.prospects.forEach(function (p) {
+            var libres = o.documents.filter(function (d) { return d.pid === p.id && !utilises[d.id] && /preuve|contrat/i.test(d.type); });
+            var cibles = [];
+            if (p.devis && p.devis.dateSignature && !p.devis.docPreuve) cibles.push(p.devis);
+            (p.avenants || []).forEach(function (a) { if (!a.docPreuve) cibles.push(a); });
+            cibles.forEach(function (c) { var d = libres.shift(); if (d) { c.docPreuve = d.id; utilises[d.id] = 1; } });
+          });
+          return o;
+        }
+      }
+    } catch (e) { /* stockage indisponible */ }
     return etatInitial();
   }
   function sauver() { try { localStorage.setItem(CLE, JSON.stringify(S)); } catch (e) { /* démo sans sauvegarde */ } }
   S = charger();
   try { localStorage.removeItem('vatea-demo-crm-v2'); } catch (e) { /* ancienne version de la démo */ }
 
-  var ui = { vue: 'pipeline', mode: 'kanban', q: '', source: '', perduOuvert: false, mois: '', fiche: null, resteSeulement: false };
+  var ui = { vue: 'pipeline', mode: 'kanban', q: '', source: '', perduOuvert: false, mois: '', fiche: null, resteSeulement: false, etapeListe: '', page: 1 };
+  var LIMITE_COLONNE = 25, PAR_PAGE = 100;
   try { ui.mode = localStorage.getItem(CLE + '-mode') || 'kanban'; } catch (e) { /* */ }
 
   function moi() { return S.comptes.find(function (c) { return c.id === S.session; }); }
@@ -298,6 +317,23 @@
     journaliser('Document ajouté', pid, d.type + ' — ' + d.nom + ' (' + taille(d.taille) + ')');
     return d.id;
   }
+  function preuveUtilisee(id) {
+    return S.prospects.some(function (p) { return (p.devis && p.devis.docPreuve === id) || (p.avenants || []).some(function (a) { return a.docPreuve === id; }); });
+  }
+  /** Ce qui attend encore une preuve de signature dans ce dossier (devis d'abord, puis avenants). */
+  function ciblesSansPreuve(p) {
+    var c = [];
+    if (p.devis && p.devis.dateSignature && !(p.devis.docPreuve && doc(p.devis.docPreuve))) c.push({ obj: p.devis, libelle: 'devis ' + p.devis.ref });
+    (p.avenants || []).forEach(function (a) { if (!(a.docPreuve && doc(a.docPreuve))) c.push({ obj: a, libelle: 'avenant ' + a.ref }); });
+    return c;
+  }
+  function rattacherPreuve(p, docId) {
+    var c = ciblesSansPreuve(p)[0];
+    if (!c) return null;
+    c.obj.docPreuve = docId;
+    journaliser('Preuve de signature rattachée', p.id, c.libelle + ' — ' + doc(docId).nom);
+    return c.libelle;
+  }
   function telechargerDocument(id) {
     var d = doc(id); if (!d) return;
     var servir = function (blob) {
@@ -336,7 +372,7 @@
   function demanderSignature(p, suite) {
     ouvrirModale({
       titre: p.entreprise + ' — devis signé',
-      texte: 'Dès la signature, la coopérative verse l’argent à Hugo : la commission (16 % du HT pour JEGO, 9 % du HT pour Marc) est acquise. Période éligible : du ' + dfr(S.miseEnLigne) + ' au ' + dfr(finIncluse()) + '.',
+      texte: 'Dès la signature, la commission est acquise : la coopérative paie directement 16 % du HT à JEGO et 9 % du HT à Marc. Période éligible : du ' + dfr(S.miseEnLigne) + ' au ' + dfr(finIncluse()) + '.',
       bouton: 'Valider la signature',
       champs: [
         { k: 'dateSignature', label: 'Date de signature', type: 'date', req: true, demi: true, val: auj(), max: auj() },
@@ -461,7 +497,8 @@
     h += '<div class="barre"><div class="bascule" role="group" aria-label="Affichage"><button type="button" data-act="mode" data-mode="kanban" class="' + (ui.mode === 'kanban' ? 'on' : '') + '">Kanban</button><button type="button" data-act="mode" data-mode="liste" class="' + (ui.mode === 'liste' ? 'on' : '') + '">Liste</button></div>' +
       '<input class="champ recherche" type="search" placeholder="Rechercher…" value="' + esc(ui.q) + '" data-input="q" aria-label="Rechercher" />' +
       '<select class="champ" data-input="source" aria-label="Source"><option value="">Toutes les sources</option>' + SOURCES.map(function (s) { return '<option' + (ui.source === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>' +
-      '<div class="droite">' + (w ? '<button type="button" class="btn" data-act="campagne" title="Simule l’outil de campagne e-mail qui prévient le CRM à chaque envoi">📧 Simuler la campagne</button>' : '') +
+      (ui.mode === 'liste' ? '<select class="champ" data-input="etapeListe" aria-label="Étape"><option value="">Toutes les étapes</option>' + ETAPES.map(function (e) { return '<option value="' + e.id + '"' + (ui.etapeListe === e.id ? ' selected' : '') + '>' + e.label + '</option>'; }).join('') + '</select>' : '') +
+      '<div class="droite">' + (w ? '<button type="button" class="btn" data-act="import" title="Créer des fiches à partir d’un fichier Excel ou CSV">⬆ Importer des contacts</button><button type="button" class="btn" data-act="campagne" title="Simule l’outil de campagne e-mail qui prévient le CRM à chaque envoi">📧 Simuler la campagne</button>' : '') +
       '<button type="button" class="btn" data-act="export-prospects">Exporter</button>' + (w ? '<button type="button" class="btn btn-or" data-act="nouveau">+ Nouveau prospect</button>' : '') + '</div></div>';
     if (ui.mode === 'kanban') {
       h += '<div class="kanban' + (ui.perduOuvert ? '' : ' avec-perdu-replie') + '">';
@@ -470,7 +507,8 @@
         h += '<section class="colonne" style="--c:' + e.c + '" data-etape="' + e.id + '" aria-label="' + e.label + '"><div class="col-tete"><span class="point"></span><h2>' + e.label + '</h2><span class="nb">' + it.length + '</span>' +
           (e.id === 'nouveau' && w ? '<button type="button" class="btn btn-icone" style="margin-left:auto" data-act="nouveau" aria-label="Ajouter un prospect">+</button>' : '') +
           (tot > 0 ? '<span class="somme">' + eur0(tot) + ' HT</span>' : '') + '</div><div class="col-corps">' +
-          (it.length ? it.map(carte).join('') : '<p class="vide">—</p>') + '</div></section>';
+          (it.length ? it.slice(0, LIMITE_COLONNE).map(carte).join('') : '<p class="vide">—</p>') +
+          (it.length > LIMITE_COLONNE ? '<button type="button" class="voir-plus" data-act="voir-liste" data-etape="' + e.id + '">Voir les ' + (it.length - LIMITE_COLONNE).toLocaleString('fr-BE') + ' autres en liste</button>' : '') + '</div></section>';
       });
       var perdus = L.filter(function (p) { return p.etape === 'perdu'; });
       h += ui.perduOuvert
@@ -479,13 +517,17 @@
       h += '</div>';
       if (w) h += '<p class="aide" style="margin-top:10px">Glissez une carte vers la droite pour la faire avancer : le CRM demande ce qui manque (devis, preuve de signature, date de paiement). Le retour en arrière est impossible.</p>';
     } else {
-      h += '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Entreprise</th><th>Étape</th><th>Source</th><th>Téléphone</th><th>E-mail</th><th class="num">Montant HT</th><th>Relance</th></tr></thead><tbody>' +
-        L.map(function (p) {
+      var LL = ui.etapeListe ? L.filter(function (p) { return p.etape === ui.etapeListe; }) : L;
+      var pages = Math.max(1, Math.ceil(LL.length / PAR_PAGE)); if (ui.page > pages) ui.page = pages;
+      var debut = (ui.page - 1) * PAR_PAGE, pageL = LL.slice(debut, debut + PAR_PAGE);
+      var pagination = LL.length > PAR_PAGE ? '<div class="pagination"><button type="button" class="btn btn-petit" data-act="page" data-p="' + (ui.page - 1) + '"' + (ui.page <= 1 ? ' disabled' : '') + '>‹ Précédent</button><span>' + (debut + 1).toLocaleString('fr-BE') + '–' + (debut + pageL.length).toLocaleString('fr-BE') + ' sur ' + LL.length.toLocaleString('fr-BE') + '</span><button type="button" class="btn btn-petit" data-act="page" data-p="' + (ui.page + 1) + '"' + (ui.page >= pages ? ' disabled' : '') + '>Suivant ›</button></div>' : '';
+      h += pagination + '<div class="tableau-wrap"><table class="tableau"><thead><tr><th>Entreprise</th><th>Étape</th><th>Source</th><th>Téléphone</th><th>E-mail</th><th class="num">Montant HT</th><th>Relance</th></tr></thead><tbody>' +
+        pageL.map(function (p) {
           var retard = p.relance && p.relance < a && ['paye', 'perdu'].indexOf(p.etape) < 0;
           return '<tr class="cliquable" data-act="fiche" data-id="' + p.id + '"><td><b>' + esc(p.entreprise) + '</b>' + (p.contact ? '<div class="aide" style="margin-top:2px">' + esc(p.contact) + '</div>' : '') + '</td>' +
             '<td><span class="etape-badge" style="--c:' + ETAPE[p.etape].c + '">' + ETAPE[p.etape].label + '</span></td><td>' + (p.sourceVerrouillee ? '🔒 ' : '') + esc(p.source) + '</td>' +
             '<td>' + (p.telephone ? esc(p.telephone) : '—') + '</td><td>' + (p.email ? esc(p.email) : '—') + '</td><td class="num">' + eur0(montantP(p)) + '</td><td>' + (p.relance ? '<span class="puce' + (retard ? ' alerte' : '') + '">' + dcourt(p.relance) + '</span>' : '—') + '</td></tr>';
-        }).join('') + (L.length ? '' : '<tr><td colspan="7" class="vide">Aucun prospect</td></tr>') + '</tbody></table></div>';
+        }).join('') + (LL.length ? '' : '<tr><td colspan="7" class="vide">Aucun prospect</td></tr>') + '</tbody></table></div>' + pagination;
     }
     return h;
   }
@@ -527,12 +569,12 @@
     var tJ = totaux(toutes, 'j'), tM = totaux(toutes, 'm'), envoye = devisEnvoyesHt(), al = alertesPreuve();
     var h = '<div class="tete-page"><div><h1>Commissions</h1><p>' + (m.id === 'jeff' ? 'Votre commission JEGO : 16 % du montant HT signé' : m.id === 'marc' ? 'Votre commission EI BRETZNER MARC : 9 % du montant HT signé' : 'JEGO : 16 % du HT signé · EI BRETZNER MARC : 9 % du HT signé') + ' — acquise dès la signature du devis.</p></div></div>';
     h += '<div class="periode"><span>Période éligible : <b>du ' + dfr(S.miseEnLigne) + ' au ' + dfr(finIncluse()) + '</b> (contrats signés dans les 12 mois suivant la mise en ligne constatée par écrit — date fictive pour la démo).</span>' +
-      '<span>La coopérative verse l’argent à Hugo dès la signature : la commission ne dépend pas du paiement du client. Chacun confirme lui-même qu’il a été payé.</span></div>';
+      '<span>Dès la signature, <b>la coopérative paie directement et séparément</b> JEGO (16 % du HT) et EI BRETZNER MARC (9 % du HT) : la commission ne dépend pas du paiement du client. Chacun confirme lui-même la réception de son paiement.</span></div>';
     if (al.length) h += '<div class="alertes">' + al.map(function (a) { return '<button type="button" class="alerte-ligne" style="--sev:#e5674d" data-act="fiche" data-id="' + a.pid + '" data-onglet="devis"><div><b>' + esc(a.titre) + '</b><span>' + esc(a.texte) + '</span></div></button>'; }).join('') + '</div>';
     var tuile = function (lbl, val, aide, cl) { return '<div class="tuile' + (cl ? ' ' + cl : '') + '"><span>' + lbl + '</span><b>' + eur(val) + '</b><small>' + aide + '</small></div>'; };
     var tuiles = function (t, taux, nom) {
-      return '<div class="tuiles tuiles-4">' + tuile('Déjà payé', t.paye, 'Paiements confirmés par ' + nom, 'ok') +
-        tuile('À payer', t.aPayer, t.sansPreuve ? 'dont ' + eur(t.sansPreuve) + ' en attente de preuve de signature' : 'Devis signés, commission acquise', 'warn') +
+      return '<div class="tuiles tuiles-4">' + tuile('Déjà payé', t.paye, 'Reçu de la coopérative, confirmé par ' + nom, 'ok') +
+        tuile('À payer', t.aPayer, t.sansPreuve ? 'Par la coopérative — dont ' + eur(t.sansPreuve) + ' en attente de preuve de signature' : 'Par la coopérative : devis signés, commission acquise', 'warn') +
         tuile('Total acquis', t.total, Math.round(taux * 100) + ' % du HT signé', 'total') +
         tuile('Devis envoyés', r2(envoye * taux), 'Indicatif : si les ' + eur0(envoye) + ' HT envoyés sont signés', 'neutre') + '</div>';
     };
@@ -540,7 +582,7 @@
     else if (m.id === 'marc') h += '<h2 class="sous-titre">Ma commission — 9 % du HT signé</h2>' + tuiles(tM, TAUX_M, 'vous');
     else {
       var ligne = function (n, t) { return '<tr><td><b>' + n + '</b></td><td class="num">' + eur(t.paye) + '</td><td class="num"><b>' + eur(t.aPayer) + '</b>' + (t.sansPreuve ? '<div class="aide" style="margin-top:2px">dont ' + eur(t.sansPreuve) + ' sans preuve</div>' : '') + '</td><td class="num">' + eur(t.total) + '</td></tr>'; };
-      h += '<h2 class="sous-titre">Résumé par bénéficiaire</h2><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Bénéficiaire</th><th class="num">Déjà payé</th><th class="num">Reste à payer</th><th class="num">Total acquis</th></tr></thead><tbody>' +
+      h += '<h2 class="sous-titre">Ce que la coopérative paie à chacun</h2><div class="tableau-wrap"><table class="tableau"><thead><tr><th>Bénéficiaire (payé directement par la coopérative)</th><th class="num">Déjà payé</th><th class="num">Reste à payer</th><th class="num">Total acquis</th></tr></thead><tbody>' +
         ligne('JEGO (Jeff) — 16 % du HT', tJ) + ligne('EI BRETZNER MARC — 9 % du HT', tM) + '</tbody></table></div>' +
         '<p class="aide" style="margin-top:8px">Devis envoyés non signés : ' + eur0(envoye) + ' HT (indicatif : JEGO ' + eur(r2(envoye * TAUX_J)) + ', Marc ' + eur(r2(envoye * TAUX_M)) + ').</p>';
     }
@@ -671,7 +713,9 @@
         '<label class="depot" data-depot><input type="file" multiple data-input="depot" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" hidden /><b>Ajouter des documents</b><span>Cliquez ou glissez vos fichiers ici · PDF, images, Word, Excel · 10 Mo max</span></label>' : '') +
         (ds.length ? '<ul class="docs">' + ds.map(function (x) {
           return '<li><span class="doc-icone">' + (x.mime.indexOf('pdf') >= 0 ? 'PDF' : x.mime.indexOf('image') >= 0 ? 'IMG' : 'DOC') + '</span><div class="doc-info"><b>' + esc(x.nom) + '</b><span>' + esc(x.type) + ' · ' + taille(x.taille) + ' · ajouté le ' + esc(dheure(x.le)) + ' par ' + esc(x.auteur) + '</span></div>' +
-            '<button type="button" class="btn btn-petit" data-act="doc-dl" data-d="' + x.id + '">Télécharger</button>' + (estAdmin() ? '<button type="button" class="btn btn-petit btn-danger" data-act="doc-suppr" data-d="' + x.id + '">Supprimer</button>' : '') + '</li>';
+            '<button type="button" class="btn btn-petit" data-act="doc-dl" data-d="' + x.id + '">Télécharger</button>' +
+            (w && !preuveUtilisee(x.id) && ciblesSansPreuve(p).length ? '<button type="button" class="btn btn-petit btn-or" data-act="doc-preuve" data-d="' + x.id + '" title="Rattacher ce fichier comme preuve de signature du ' + esc(ciblesSansPreuve(p)[0].libelle) + '">Utiliser comme preuve de signature</button>' : '') +
+            (preuveUtilisee(x.id) ? '<span class="pastille p-ok" title="Rattaché comme preuve de signature">Preuve de signature ✓</span>' : '') + (estAdmin() ? '<button type="button" class="btn btn-petit btn-danger" data-act="doc-suppr" data-d="' + x.id + '">Supprimer</button>' : '') + '</li>';
         }).join('') + '</ul>' : '<p class="vide">Aucun document pour ce client.</p>') + '</div>';
     } else {
       var j = S.journal.filter(function (x) { return x.pid === p.id; });
@@ -758,13 +802,177 @@
     rendreFiche();
   }
 
+  /* ───────────── Import de contacts (Excel .xlsx ou CSV), sans bibliothèque externe ───────────── */
+  function lireCsv(texte) {
+    texte = texte.replace(/^﻿/, '');
+    var premiere = texte.split(/\r?\n/)[0] || '';
+    var sep = [';', ',', '\t'].reduce(function (m, c) { return (premiere.split(c).length > premiere.split(m).length) ? c : m; }, ';');
+    var lignes = [], ligne = [], champ = '', guill = false;
+    for (var i = 0; i < texte.length; i++) {
+      var ch = texte[i];
+      if (guill) { if (ch === '"') { if (texte[i + 1] === '"') { champ += '"'; i++; } else guill = false; } else champ += ch; }
+      else if (ch === '"') guill = true;
+      else if (ch === sep) { ligne.push(champ); champ = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && texte[i + 1] === '\n') i++; ligne.push(champ); lignes.push(ligne); ligne = []; champ = ''; }
+      else champ += ch;
+    }
+    if (champ !== '' || ligne.length) { ligne.push(champ); lignes.push(ligne); }
+    return lignes.filter(function (l) { return l.some(function (c) { return String(c).trim() !== ''; }); });
+  }
+  /** Lit la première feuille d'un fichier .xlsx (zip + XML) avec les outils du navigateur. */
+  function lireXlsx(buf) {
+    var dv = new DataView(buf), u8 = new Uint8Array(buf), dec = new TextDecoder();
+    var fin = -1;
+    for (var i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { fin = i; break; }
+    if (fin < 0) return Promise.reject(new Error('Fichier Excel illisible.'));
+    var n = dv.getUint16(fin + 10, true), pos = dv.getUint32(fin + 16, true), entrees = {};
+    for (var k = 0; k < n; k++) {
+      var lnom = dv.getUint16(pos + 28, true), lext = dv.getUint16(pos + 30, true), lcom = dv.getUint16(pos + 32, true);
+      entrees[dec.decode(u8.subarray(pos + 46, pos + 46 + lnom))] = { methode: dv.getUint16(pos + 10, true), taille: dv.getUint32(pos + 20, true), local: dv.getUint32(pos + 42, true) };
+      pos += 46 + lnom + lext + lcom;
+    }
+    function lire(nom) {
+      var e = entrees[nom]; if (!e) return Promise.resolve(null);
+      var debut = e.local + 30 + dv.getUint16(e.local + 26, true) + dv.getUint16(e.local + 28, true), data = u8.subarray(debut, debut + e.taille);
+      if (e.methode === 0) return Promise.resolve(dec.decode(data));
+      if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('Navigateur trop ancien pour lire ce fichier Excel : enregistrez-le en CSV.'));
+      return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    }
+    var xml = function (t) { return new DOMParser().parseFromString(t, 'application/xml'); };
+    var tags = function (d, nom) { return Array.prototype.slice.call(d.getElementsByTagNameNS('*', nom)); };
+    return Promise.all([lire('xl/sharedStrings.xml'), lire('xl/workbook.xml'), lire('xl/_rels/workbook.xml.rels')]).then(function (r) {
+      var partages = r[0] ? tags(xml(r[0]), 'si').map(function (si) { return tags(si, 't').map(function (t) { return t.textContent; }).join(''); }) : [];
+      var chemin = 'xl/worksheets/sheet1.xml';
+      if (r[1] && r[2]) {
+        var feuille = tags(xml(r[1]), 'sheet')[0], rid = feuille && (feuille.getAttribute('r:id') || feuille.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id'));
+        var rel = tags(xml(r[2]), 'Relationship').find(function (x) { return x.getAttribute('Id') === rid; });
+        if (rel) { var cible = rel.getAttribute('Target'); chemin = cible.charAt(0) === '/' ? cible.slice(1) : 'xl/' + cible.replace(/^\.\//, ''); }
+      }
+      return lire(chemin).then(function (t) {
+        if (!t) throw new Error('Feuille introuvable dans le fichier Excel.');
+        return tags(xml(t), 'row').map(function (row) {
+          var cells = [];
+          tags(row, 'c').forEach(function (c) {
+            var ref = c.getAttribute('r') || '', lettres = (ref.match(/^[A-Z]+/) || [''])[0], col = 0;
+            for (var j = 0; j < lettres.length; j++) col = col * 26 + (lettres.charCodeAt(j) - 64);
+            col = lettres ? col - 1 : cells.length;
+            var type = c.getAttribute('t'), v = tags(c, 'v')[0], val = '';
+            if (type === 's') val = v ? (partages[Number(v.textContent)] || '') : '';
+            else if (type === 'inlineStr') val = tags(c, 't').map(function (x) { return x.textContent; }).join('');
+            else val = v ? v.textContent : '';
+            cells[col] = val;
+          });
+          for (var q = 0; q < cells.length; q++) if (cells[q] == null) cells[q] = '';
+          return cells;
+        }).filter(function (l) { return l.some(function (x) { return String(x).trim() !== ''; }); });
+      });
+    });
+  }
+  var CHAMPS_IMPORT = [
+    { k: 'email', label: 'E-mail *', re: /^(e[-\s._]?mail|courriel|mail|adresse e[-\s]?mail|email address)$/i },
+    { k: 'entreprise', label: 'Entreprise', re: /^(entreprise|soci[ée]t[ée]|company|organisation|organization|raison sociale|nom de l'entreprise)$/i },
+    { k: 'prenom', label: 'Prénom', re: /^(pr[ée]nom|first ?name|given name)$/i },
+    { k: 'nom', label: 'Nom', re: /^(nom|last ?name|surname|family name|nom de famille)$/i },
+    { k: 'contact', label: 'Contact (nom complet)', re: /^(contact|nom complet|full ?name|name|personne de contact|interlocuteur)$/i },
+    { k: 'telephone', label: 'Téléphone', re: /^(t[ée]l[ée]?phone|t[ée]l|phone|gsm|mobile|portable|num[ée]ro)$/i },
+    { k: 'siteWeb', label: 'Site web', re: /^(site( web| internet)?|website|web|url)$/i },
+    { k: 'notes', label: 'Notes', re: /^(notes?|commentaires?|remarques?|ville|secteur)$/i }
+  ];
+  var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  var imp = null;
+  function analyserImport() {
+    var m = imp.map, lignes = imp.lignes.slice(imp.avecEntete ? 1 : 0), existants = {}, vus = {}, res = { prets: [], doublonsCrm: 0, doublonsFichier: 0, invalides: [] };
+    S.prospects.forEach(function (p) { if (p.email) existants[p.email.toLowerCase()] = 1; });
+    var val = function (l, k) { return m[k] === '' || m[k] == null ? '' : String(l[m[k]] == null ? '' : l[m[k]]).trim(); };
+    lignes.forEach(function (l, i) {
+      var email = val(l, 'email').toLowerCase().replace(/^mailto:/, '');
+      if (!EMAIL_RE.test(email)) { res.invalides.push({ ligne: i + (imp.avecEntete ? 2 : 1), valeur: email || '(vide)' }); return; }
+      if (existants[email]) { res.doublonsCrm++; return; }
+      if (vus[email]) { res.doublonsFichier++; return; }
+      vus[email] = 1;
+      var contact = val(l, 'contact') || [val(l, 'prenom'), val(l, 'nom')].filter(Boolean).join(' ');
+      var dom = email.split('@')[1].split('.')[0], entreprise = val(l, 'entreprise') || contact || (dom.charAt(0).toUpperCase() + dom.slice(1));
+      res.prets.push({ email: email, entreprise: entreprise.slice(0, 200), contact: contact.slice(0, 200), telephone: val(l, 'telephone').slice(0, 50), siteWeb: val(l, 'siteWeb').slice(0, 300), notes: val(l, 'notes').slice(0, 2000) });
+    });
+    return res;
+  }
+  function fenetreImport(contenu) {
+    var el = document.getElementById('import'); if (el) el.remove();
+    document.getElementById('modale').insertAdjacentHTML('beforeend', '<div class="modale-voile" id="import"><div class="modale modale-large" role="dialog" aria-modal="true" aria-label="Importer des contacts">' + contenu + '</div></div>');
+  }
+  function etapeImportChoix(erreur) {
+    imp = null;
+    fenetreImport('<h3>Importer des contacts</h3><p>Fichier <b>Excel (.xlsx)</b> ou <b>CSV</b>, une ligne par contact, avec au minimum une colonne e-mail. Les fiches sont créées en « Nouveau » ; les doublons sont ignorés.</p>' +
+      '<label class="depot" data-depot-import><input type="file" accept=".xlsx,.csv,.txt" data-input="fichier-import" hidden /><b>Choisir le fichier</b><span>ou le glisser ici</span></label>' +
+      (erreur ? '<p class="erreur">' + esc(erreur) + '</p>' : '') +
+      '<p class="aide">Pas sûr du format ? <button type="button" class="lien" data-act="modele-import">Télécharger un modèle (CSV)</button>. Rappel : une campagne commerciale doit proposer un lien de désinscription dans chaque e-mail.</p>' +
+      '<div class="actions"><button type="button" class="btn" data-act="fermer-import">Annuler</button></div>');
+  }
+  function chargerFichierImport(f) {
+    if (!f) return;
+    if (f.size > 20 * 1024 * 1024) return etapeImportChoix('Fichier trop lourd (20 Mo maximum).');
+    var xlsx = /\.xlsx$/i.test(f.name);
+    if (/\.xls$/i.test(f.name)) return etapeImportChoix('Ancien format Excel (.xls) : enregistrez le fichier en .xlsx ou en CSV.');
+    var lecture = xlsx ? f.arrayBuffer().then(lireXlsx) : f.text().then(lireCsv);
+    fenetreImport('<h3>Lecture du fichier…</h3><p>' + esc(f.name) + '</p>');
+    lecture.then(function (lignes) {
+      if (!lignes.length) return etapeImportChoix('Le fichier est vide.');
+      var entetes = lignes[0].map(function (x) { return String(x).trim(); });
+      var map = {}, trouve = false;
+      CHAMPS_IMPORT.forEach(function (c) { var i = entetes.findIndex(function (h) { return c.re.test(h); }); map[c.k] = i >= 0 ? i : ''; if (i >= 0) trouve = true; });
+      var avecEntete = trouve;
+      if (!avecEntete) { var ie = lignes[0].findIndex(function (x) { return EMAIL_RE.test(String(x).trim()); }); map.email = ie >= 0 ? ie : ''; }
+      imp = { nom: f.name, lignes: lignes, entetes: avecEntete ? entetes : lignes[0].map(function (x, i) { return 'Colonne ' + (i + 1); }), avecEntete: avecEntete, map: map, source: 'Prospection de Hugo' };
+      etapeImportCorrespondance();
+    }).catch(function (e) { etapeImportChoix(e.message || 'Fichier illisible.'); });
+  }
+  function etapeImportCorrespondance() {
+    var a = analyserImport(), nbCol = Math.max.apply(null, imp.lignes.map(function (l) { return l.length; }));
+    var options = function (k) { return '<option value="">— ignorer —</option>' + Array.from({ length: nbCol }, function (x, i) { return '<option value="' + i + '"' + (String(imp.map[k]) === String(i) ? ' selected' : '') + '>' + esc(imp.entetes[i] || 'Colonne ' + (i + 1)) + '</option>'; }).join(''); };
+    var apercu = a.prets.slice(0, 5);
+    fenetreImport('<h3>Importer « ' + esc(imp.nom) + ' »</h3><p>' + (imp.lignes.length - (imp.avecEntete ? 1 : 0)).toLocaleString('fr-BE') + ' ligne(s) lue(s). Vérifiez la correspondance des colonnes :</p>' +
+      '<div class="corresp">' + CHAMPS_IMPORT.map(function (c) { return '<label><span class="lbl">' + c.label + '</span><select class="champ" data-map="' + c.k + '">' + options(c.k) + '</select></label>'; }).join('') + '</div>' +
+      '<label class="ligne-entete"><input type="checkbox" data-input="avecEntete"' + (imp.avecEntete ? ' checked' : '') + ' /> La première ligne contient les titres des colonnes</label>' +
+      '<div><label class="lbl" for="imp-source">Source des fiches créées</label><select class="champ" id="imp-source" data-input="sourceImport">' + SOURCES.map(function (s) { return '<option' + (s === imp.source ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select></div>' +
+      '<div class="bilan"><div class="ok"><b>' + a.prets.length.toLocaleString('fr-BE') + '</b><span>à importer</span></div><div><b>' + a.doublonsCrm.toLocaleString('fr-BE') + '</b><span>déjà dans le CRM</span></div><div><b>' + a.doublonsFichier.toLocaleString('fr-BE') + '</b><span>en double dans le fichier</span></div><div class="' + (a.invalides.length ? 'ko' : '') + '"><b>' + a.invalides.length.toLocaleString('fr-BE') + '</b><span>e-mail manquant ou invalide</span></div></div>' +
+      (a.invalides.length ? '<p class="aide">Lignes ignorées : ' + a.invalides.slice(0, 6).map(function (x) { return 'ligne ' + x.ligne + ' (' + esc(x.valeur) + ')'; }).join(', ') + (a.invalides.length > 6 ? '…' : '') + '</p>' : '') +
+      (apercu.length ? '<div class="tableau-wrap apercu"><table class="tableau"><thead><tr><th>Entreprise</th><th>Contact</th><th>E-mail</th><th>Téléphone</th></tr></thead><tbody>' + apercu.map(function (x) { return '<tr><td>' + esc(x.entreprise) + '</td><td>' + esc(x.contact || '—') + '</td><td>' + esc(x.email) + '</td><td>' + esc(x.telephone || '—') + '</td></tr>'; }).join('') + '</tbody></table></div><p class="aide">Aperçu des 5 premières fiches.</p>' : '') +
+      '<div class="actions"><button type="button" class="btn" data-act="fermer-import">Annuler</button><button type="button" class="btn" data-act="import-retour">Autre fichier</button><button type="button" class="btn btn-or" data-act="import-go"' + (a.prets.length ? '' : ' disabled') + '>Créer ' + a.prets.length.toLocaleString('fr-BE') + ' fiche(s)</button></div>');
+  }
+  function executerImport() {
+    var a = analyserImport(), lot = 'imp' + Date.now().toString(36), ts = maintenant(), m = moi();
+    a.prets.forEach(function (x) {
+      var p = { id: S.seq.p++, entreprise: x.entreprise, contact: x.contact, email: x.email, telephone: x.telephone, siteWeb: x.siteWeb, typeVideo: '', montantEstime: null, source: imp.source, sourceVerrouillee: false,
+        etape: 'nouveau', responsable: S.session, relance: '', notes: [x.notes, 'Importé depuis « ' + imp.nom + ' » le ' + dheure(ts) + '.'].filter(Boolean).join('\n'), raisonPerte: '', devis: null, avenants: [], annulation: null, paiementClient: null,
+        etapeAvantPerte: null, campagneLe: null, creeLe: auj(), importLot: lot };
+      S.prospects.unshift(p);
+      S.journal.unshift({ le: ts, auteur: m.nom, action: 'Prospect créé par import', pid: p.id, details: imp.nom });
+    });
+    journaliser('Import de contacts', null, a.prets.length + ' fiche(s) créée(s) depuis « ' + imp.nom + ' » (source : ' + imp.source + ') — ignorés : ' + a.doublonsCrm + ' déjà présents, ' + a.doublonsFichier + ' doublons, ' + a.invalides.length + ' invalides');
+    var ok = sauver2();
+    var el = document.getElementById('import'); if (el) el.remove();
+    ui.mode = 'liste'; ui.etapeListe = 'nouveau'; ui.source = imp.source; ui.page = 1; ui.vue = 'pipeline';
+    var n = a.prets.length; imp = null; rendre();
+    toast(n.toLocaleString('fr-BE') + ' fiche(s) créée(s) en « Nouveau ».' + (ok ? '' : ' Attention : la mémoire du navigateur est pleine, la démo ne pourra pas tout conserver.'), !ok);
+  }
+  function sauver2() { try { localStorage.setItem(CLE, JSON.stringify(S)); return true; } catch (e) { return false; } }
+  function telechargerModele() {
+    telecharger('modele-import-contacts.csv', [['Entreprise', 'Prénom', 'Nom', 'E-mail', 'Téléphone', 'Site web', 'Notes'], ['Exemple SPRL', 'Marie', 'Dupont', 'marie.dupont@exemple.be', '+32 470 00 00 00', 'https://exemple.be', 'Rencontrée au salon'], ['Autre Exemple SA', 'Luc', 'Martin', 'luc@autre-exemple.be', '', '', '']]);
+  }
+
   /* ───────────── Événements ───────────── */
   function ajouterFichiers(liste) {
     var p = prospect(ui.fiche && ui.fiche.id); if (!p || !ecriture()) return;
     var ok = 0, refus = [];
-    Array.prototype.forEach.call(liste, function (f) { if (f.size > TAILLE_MAX) refus.push(f.name); else { ajouterDocument(p.id, f, ui.typeDoc || 'Autre'); ok++; } });
-    sauver(); rendreFiche();
-    if (ok) toast(ok + ' document(s) ajouté(s).');
+    var rattaches = [];
+    Array.prototype.forEach.call(liste, function (f) {
+      if (f.size > TAILLE_MAX) { refus.push(f.name); return; }
+      var type = ui.typeDoc || 'Autre', id = ajouterDocument(p.id, f, type); ok++;
+      if (/preuve|contrat/i.test(type)) { var r = rattacherPreuve(p, id); if (r) rattaches.push(r); }
+    });
+    sauver(); rendre();
+    if (rattaches.length) toast('Preuve rattachée au ' + rattaches.join(', ') + ' : la commission peut être confirmée.');
+    else if (ok) toast(ok + ' document(s) ajouté(s).');
     if (refus.length) toast('Trop lourd (10 Mo max) : ' + refus.join(', '), true);
   }
 
@@ -861,6 +1069,13 @@
         break;
       }
       case 'doc-dl': telechargerDocument(t.dataset.d); break;
+      case 'doc-preuve': {
+        var pd = prospect(ui.fiche.id), dd2 = doc(t.dataset.d), lib = rattacherPreuve(pd, dd2.id);
+        if (dd2.type !== 'Preuve de signature') dd2.type = 'Preuve de signature';
+        sauver(); rendre();
+        if (lib) toast('Preuve rattachée au ' + lib + ' : la commission peut être confirmée.');
+        break;
+      }
       case 'doc-suppr': {
         var dd = doc(t.dataset.d);
         confirmer('Supprimer ce document ?', esc(dd.nom) + ' sera supprimé. La suppression est inscrite dans l’historique.', 'Supprimer', function () {
@@ -877,7 +1092,7 @@
         if (!l.preuveOk) return toast('Preuve de signature manquante.', true);
         var montantB = b === 'j' ? l.j : l.m, neg = l.ht < 0;
         ouvrirModale({ titre: neg ? 'Confirmer la déduction' : 'Confirmer que vous avez été payé', texte: l.p.entreprise + ' — ' + l.type.toLowerCase() + ' ' + esc(l.ref) + ' : <b>' + eur(montantB) + '</b> (' + (b === 'j' ? '16' : '9') + ' % de ' + eur(l.ht) + ' HT). Une fois confirmée, la ligne est figée.', bouton: 'Confirmer',
-          champs: [{ k: 'date', label: neg ? 'Date de la déduction' : 'Date de réception du paiement', type: 'date', req: true, val: auj(), max: auj() }],
+          champs: [{ k: 'date', label: neg ? 'Date de la déduction' : 'Date de réception du paiement de la coopérative', type: 'date', req: true, val: auj(), max: auj() }],
           onOk: function (v) {
             S.comPayee[l.id] = S.comPayee[l.id] || {};
             S.comPayee[l.id][b] = { date: v.date, par: mm.nom };
@@ -889,7 +1104,12 @@
       case 'campagne': {
         var nouveaux = S.prospects.filter(function (p) { return p.etape === 'nouveau' && p.email; });
         var externe = !S.prospects.some(function (p) { return p.email === 'lea@fleuriste-ixelles.example'; });
-        var opts = nouveaux.map(function (p) { return { v: 'p' + p.id, checked: true, label: esc(p.entreprise) + ' — ' + esc(p.email) + ' <span class="aide">(Nouveau → Contacté)</span>' }; });
+        var opts;
+        if (nouveaux.length > 15) {
+          var parSource = {};
+          nouveaux.forEach(function (p) { parSource[p.source] = (parSource[p.source] || 0) + 1; });
+          opts = Object.keys(parSource).map(function (src) { return { v: 'src:' + src, checked: true, label: '<b>' + esc(src) + '</b> — ' + parSource[src].toLocaleString('fr-BE') + ' contact(s) « Nouveau » avec e-mail <span class="aide">(→ Contacté)</span>' }; });
+        } else opts = nouveaux.map(function (p) { return { v: 'p' + p.id, checked: true, label: esc(p.entreprise) + ' — ' + esc(p.email) + ' <span class="aide">(Nouveau → Contacté)</span>' }; });
         if (externe) opts.push({ v: 'externe', checked: true, label: 'Fleuriste Ixelles (fictif) — lea@fleuriste-ixelles.example <span class="aide">(absent du CRM : créé en Contacté)</span>' });
         if (!opts.length) return toast('Aucun prospect « Nouveau » avec une adresse e-mail à contacter.', true);
         ouvrirModale({ titre: 'Simuler l’envoi de la campagne', texte: 'Dans le vrai CRM, l’outil de campagne prévient le CRM à chaque e-mail envoyé : le prospect passe tout seul en « Contacté ».', bouton: 'Envoyer la campagne',
@@ -897,7 +1117,12 @@
           onOk: function (v) {
             if (!v.cibles.length) return 'Cochez au moins un destinataire.';
             var n = 0, ts = maintenant();
+            var cibles = [];
             v.cibles.forEach(function (c) {
+              if (c.indexOf('src:') === 0) nouveaux.forEach(function (p) { if (p.source === c.slice(4)) cibles.push('p' + p.id); });
+              else cibles.push(c);
+            });
+            cibles.forEach(function (c) {
               if (c === 'externe') {
                 var np = { id: S.seq.p++, entreprise: 'Fleuriste Ixelles (fictif)', contact: 'Léa Martin', email: 'lea@fleuriste-ixelles.example', telephone: '', siteWeb: '', typeVideo: '', montantEstime: null, source: 'Campagne e-mail', sourceVerrouillee: false,
                   etape: 'contacte', responsable: 'hugo', relance: auj(3), notes: 'Contact créé par la campagne « ' + v.nom + ' ».', raisonPerte: '', devis: null, avenants: [], annulation: null, paiementClient: null, etapeAvantPerte: null, creeLe: auj(), campagneLe: ts };
@@ -914,6 +1139,13 @@
           } });
         break;
       }
+      case 'import': etapeImportChoix(); break;
+      case 'fermer-import': { var fi = document.getElementById('import'); if (fi) fi.remove(); imp = null; break; }
+      case 'import-retour': etapeImportChoix(); break;
+      case 'import-go': executerImport(); break;
+      case 'modele-import': telechargerModele(); break;
+      case 'voir-liste': ui.mode = 'liste'; ui.etapeListe = t.dataset.etape; ui.page = 1; try { localStorage.setItem(CLE + '-mode', 'liste'); } catch (e) { /* */ } rendre(); window.scrollTo(0, 0); break;
+      case 'page': ui.page = Math.max(1, Number(t.dataset.p)); rendre(); window.scrollTo(0, 0); break;
       case 'export-commissions': exporterCommissions(); toast('Export CSV téléchargé (ouvrable dans Excel).'); break;
       case 'export-prospects': exporterProspects(); toast('Liste exportée (CSV).'); break;
       case 'mdp': {
@@ -939,14 +1171,19 @@
 
   document.addEventListener('input', function (ev) {
     var k = ev.target.dataset && ev.target.dataset.input;
-    if (k === 'q') { ui.q = ev.target.value; rendre(); }
+    if (k === 'q') { ui.q = ev.target.value; ui.page = 1; rendre(); }
   });
   document.addEventListener('change', function (ev) {
     var t = ev.target, k = t.dataset && t.dataset.input;
-    if (k === 'source') { ui.source = t.value; rendre(); }
+    if (k === 'source') { ui.source = t.value; ui.page = 1; rendre(); }
     else if (k === 'mois') { ui.mois = t.value; rendre(); }
     else if (k === 'resteSeulement') { ui.resteSeulement = t.checked; rendre(); }
     else if (k === 'typeDoc') { ui.typeDoc = t.value; }
+    else if (k === 'fichier-import') { chargerFichierImport(t.files && t.files[0]); }
+    else if (k === 'avecEntete' && imp) { imp.avecEntete = t.checked; etapeImportCorrespondance(); }
+    else if (k === 'sourceImport' && imp) { imp.source = t.value; }
+    else if (k === 'etapeListe') { ui.etapeListe = t.value; ui.page = 1; rendre(); }
+    else if (t.dataset && t.dataset.map && imp) { imp.map[t.dataset.map] = t.value === '' ? '' : Number(t.value); etapeImportCorrespondance(); }
     else if (k === 'depot') { ajouterFichiers(t.files); }
     else if (k === 'miseEnLigne' && t.value) { var av = S.miseEnLigne; S.miseEnLigne = t.value; journaliser('Date de mise en ligne modifiée', null, dfr(av) + ' → ' + dfr(t.value)); sauver(); rendre(); toast('Période éligible recalculée.'); }
     else if (t.dataset && t.dataset.role) {
@@ -971,7 +1208,7 @@
     }
   });
   document.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Escape') { if (document.querySelector('[data-modale]')) fermerModale(); else if (ui.fiche) { ui.fiche = null; rendreFiche(); } }
+    if (ev.key === 'Escape') { if (document.getElementById('import')) { document.getElementById('import').remove(); imp = null; return; } if (document.querySelector('[data-modale]')) fermerModale(); else if (ui.fiche) { ui.fiche = null; rendreFiche(); } }
     if (ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.act === 'perdu-toggle') { ui.perduOuvert = true; rendre(); }
   });
 
@@ -980,13 +1217,15 @@
   document.addEventListener('dragstart', function (ev) { var c = ev.target.closest && ev.target.closest('.carte[draggable]'); if (!c) return; glisse = Number(c.dataset.id); ev.dataTransfer.setData('text/plain', String(glisse)); ev.dataTransfer.effectAllowed = 'move'; c.classList.add('glisse'); });
   document.addEventListener('dragend', function () { glisse = null; document.querySelectorAll('.glisse, .survol').forEach(function (n) { n.classList.remove('glisse', 'survol'); }); });
   document.addEventListener('dragover', function (ev) {
-    var depot = ev.target.closest && ev.target.closest('[data-depot]');
+    var depot = ev.target.closest && ev.target.closest('[data-depot], [data-depot-import]');
     if (depot) { ev.preventDefault(); depot.classList.add('survol'); return; }
     var col = ev.target.closest && ev.target.closest('.colonne[data-etape]'); if (!col || glisse == null) return;
     ev.preventDefault(); document.querySelectorAll('.survol').forEach(function (n) { if (n !== col) n.classList.remove('survol'); }); col.classList.add('survol');
   });
   document.addEventListener('dragleave', function (ev) { var depot = ev.target.closest && ev.target.closest('[data-depot]'); if (depot && !depot.contains(ev.relatedTarget)) depot.classList.remove('survol'); });
   document.addEventListener('drop', function (ev) {
+    var depotImp = ev.target.closest && ev.target.closest('[data-depot-import]');
+    if (depotImp) { ev.preventDefault(); if (ev.dataTransfer.files && ev.dataTransfer.files[0]) chargerFichierImport(ev.dataTransfer.files[0]); return; }
     var depot = ev.target.closest && ev.target.closest('[data-depot]');
     if (depot) { ev.preventDefault(); depot.classList.remove('survol'); if (ev.dataTransfer.files && ev.dataTransfer.files.length) ajouterFichiers(ev.dataTransfer.files); return; }
     var col = ev.target.closest && ev.target.closest('.colonne[data-etape]'); if (!col) return;
