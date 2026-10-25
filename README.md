@@ -73,17 +73,19 @@ Le titre « Découvrez VATEA en vidéo » est provisoire : à valider par JEGO.
 
 ## Démo du CRM (`/demo-crm`)
 
-Démonstration autonome, données fictives enregistrées dans le navigateur du visiteur (bouton « Réinitialiser »).
-Parcours complet du cahier des charges : prospect → devis envoyé → devis signé (preuve) → facture → encaissements
-(acompte, solde, remboursement) → commissions JEGO 16 % / EI BRETZNER MARC 9 % → rapport mensuel CSV.
-Comptes : Hugo (saisie), Jeff et Marc (contrôle, lecture seule), Administrateur (comptes, statut des commissions).
-Page Commissions : bloc « Ma commission » (déjà réglé, à recevoir, en contrôle, à venir, total prévu), détail par dossier,
-et « Enregistrer un règlement » (admin) : les lignes payées passent en « Réglée », sont figées et sortent du reste à payer.
-Calcul : 16 % / 9 % du **montant HT signé et encaissé**. La part HT de chaque paiement est tirée de sa facture (TVA 21 %, 12 %, 6 %
-ou 0 % en autoliquidation), le paiement qui solde une facture reprend exactement le HT restant, et la base est plafonnée au HT
-du devis signé (alerte « facturé au-delà du devis signé »).
-Bouton « 📧 Simuler la campagne » : les prospects « Nouveau » passent automatiquement en « Contacté » (comme le fera l'outil de campagne).
-Fichiers : `public/demo-crm/` (index.html, demo.js, demo.css, polices). Non indexée par Google.
+Démonstration autonome (version 3, décisions de la réunion du 24/10), données fictives enregistrées dans le navigateur du
+visiteur (bouton « Réinitialiser »). Fichiers : `public/demo-crm/` (index.html, demo.js, demo.css, polices). Non indexée.
+
+- **Comptes** : Hugo et Jeff (Gérant, même accès : saisie et pipeline), Marc (Consultation), Administrateur (comptes).
+- **Commission = 16 % du HT signé (JEGO) et 9 % du HT signé (EI BRETZNER MARC)**, acquise dès la signature : la coopérative
+  verse l'argent à Hugo à la signature. Une ligne par devis signé, par avenant signé, et une ligne négative par annulation.
+- **Paiement des commissions** : « À payer » / « Payée le … » ; **chaque bénéficiaire confirme lui-même** qu'il a été payé
+  (Jeff pour JEGO, Marc pour la sienne), la ligne est alors figée. Preuve de signature obligatoire pour confirmer.
+- **Paiements clients** : simple suivi pour Hugo (facturé par la coopérative / « Le client a payé »), sans effet sur les commissions.
+- **Fiche client** : bouton « Envoyer un e-mail » (messagerie ouverte, adresse remplie) et « Appeler » ; onglet **Documents**
+  (ajout depuis l'ordinateur, glisser-déposer, téléchargement) ; modifications tracées avec ancienne et nouvelle valeur.
+- **Pas de retour en arrière** dans le pipeline (perdu réactivable à son étape d'avant ; correction réservée à l'admin, tracée).
+- Calendrier des champs date visible sur tous les navigateurs ; « 📧 Simuler la campagne » (Nouveau → Contacté automatique).
 
 ## Images
 
