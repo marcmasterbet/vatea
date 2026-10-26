@@ -279,3 +279,6 @@ video.video-pres { object-fit: contain; }
 .photo-metier { position: relative; margin: 0; overflow: hidden; border-radius: 18px; border: 1px solid rgba(201, 168, 106, .35); box-shadow: 0 18px 40px rgba(18, 18, 18, .55); }
 .photo-metier img { width: 100%; height: auto; display: block; transition: transform .6s ease; }
 .photo-metier:hover img { transform: scale(1.04); }
+
+.photo-carre { aspect-ratio: 1 / 1; border-radius: 20px; box-shadow: none; }
+.photo-carre img { height: 100%; object-fit: cover; }

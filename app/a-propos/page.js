@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import photoHugo from '@/public/media/a-propos/hugo-plateau.jpg';
+import photoCamera from '@/public/media/a-propos/camera.jpg';
 import Placeholder from '@/components/Placeholder';
 
 export const metadata = {
@@ -71,7 +72,17 @@ export default function AProposPage() {
             <p><strong>Avec VATEA, vous bénéficiez de cette expertise cinématographique pour vos productions vidéo, avec un interlocuteur unique pour coordonner votre projet de A à Z.</strong></p>
           </div>
           <div style={{ flex: '1 1 440px', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
-            {['caméra', 'lumière', 'son', 'monteur'].map((t) => <Placeholder key={t} label={`Photo — ${t}`} framed ratio="1 / 1" />)}
+            {/* Photos des métiers : ajouter `src` quand la photo est fournie */}
+            {[
+              { label: 'caméra', src: photoCamera, alt: 'Cadreur portant une caméra cinéma sur un tournage en extérieur' },
+              { label: 'lumière' },
+              { label: 'son' },
+              { label: 'monteur' },
+            ].map((m) => (m.src ? (
+              <figure key={m.label} className="photo-metier photo-carre">
+                <Image src={m.src} placeholder="blur" quality={82} sizes="(max-width: 768px) 46vw, 320px" alt={m.alt} />
+              </figure>
+            ) : <Placeholder key={m.label} label={`Photo — ${m.label}`} framed ratio="1 / 1" />))}
           </div>
         </div>
       </section>
