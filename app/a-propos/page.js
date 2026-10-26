@@ -4,6 +4,7 @@ import photoHugo from '@/public/media/a-propos/hugo-plateau.jpg';
 import photoCamera from '@/public/media/a-propos/camera.jpg';
 import photoLumiere from '@/public/media/a-propos/lumiere.jpg';
 import photoPlateauCafe from '@/public/media/a-propos/plateau-cafe.jpg';
+import photoReglage from '@/public/media/a-propos/lumiere-reglage.jpg';
 import Placeholder from '@/components/Placeholder';
 
 export const metadata = {
@@ -78,9 +79,9 @@ export default function AProposPage() {
           <div className="damier" style={{ flex: '1 1 440px' }}>
             {[
               { label: 'caméra', forme: 'v', zone: 'a', src: photoCamera, alt: 'Cadreur portant une caméra cinéma sur un tournage en extérieur' },
-              { label: 'lumière', forme: 'h', zone: 'b', src: photoLumiere, alt: 'Installation des projecteurs sur une structure en extérieur au coucher du soleil' },
-              { label: 'tournage', forme: 'h', zone: 'c', src: photoPlateauCafe, alt: 'Tournage d’une scène dans un café avec une caméra cinéma' },
-              { label: 'monteur', forme: 'v', zone: 'd' },
+              { label: 'lumière', forme: 'h', zone: 'c', src: photoLumiere, alt: 'Installation des projecteurs sur une structure en extérieur au coucher du soleil' },
+              { label: 'tournage', forme: 'h', zone: 'b', src: photoPlateauCafe, alt: 'Tournage d’une scène dans un café avec une caméra cinéma' },
+              { label: 'réglage', forme: 'v', zone: 'd', src: photoReglage, alt: 'Technicien réglant un projecteur sur un pied au coucher du soleil' },
             ].map((m) => (
               <div key={m.label} style={{ gridArea: m.zone }}>
                 {m.src ? (
