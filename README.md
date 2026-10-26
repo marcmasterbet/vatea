@@ -50,8 +50,8 @@ Node.js 18.18 ou plus récent.
 
 | Fichier | Usage | À remplacer par |
 | --- | --- | --- |
-| `demo-provisoire.mp4` | Vidéo en boucle de l'accueil | Bande démo VATEA (MP4, 15–30 s, sans son, < 10 Mo idéalement) — même nom de fichier |
-| `demo-poster.jpg` | Image affichée le temps que la vidéo démarre | Première image de la nouvelle vidéo (même nom) |
+| `hero-accueil.webm` / `hero-accueil.mp4` / `hero-accueil-mobile.mp4` | Vidéo en boucle de l'accueil (fournie le 26/10, 5 s, sans son) | Pour la changer : réencoder avec les mêmes noms (1920 px ; mobile = recadrage central 720×858) |
+| `hero-accueil-poster.jpg` | Image affichée le temps que la vidéo démarre | Première image de la vidéo |
 | `hero-portfolio.jpg`, `hero-blog.jpg` | Hauts de pages Portfolio et Blog | — |
 | `fond-formulaire.jpg` | Fond du formulaire | — |
 | `logo-va.png` | Logo (menu, pied de page, icône d'onglet) | Version SVG si disponible |

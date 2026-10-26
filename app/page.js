@@ -30,9 +30,15 @@ export default function HomePage() {
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
-      {/* HERO : vidéo en boucle (provisoire, à remplacer par la bande démo) */}
+      {/* HERO : vidéo d'arrière-plan en boucle (objectif en gros plan, fournie le 26/10).
+          Ordinateur : 1920 px (WebM puis MP4) · téléphone : version recadrée au centre, plus légère. */}
       <section className="hero-video" aria-labelledby="titre-hero">
-        <video src="/media/demo-provisoire.mp4" poster="/media/demo-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-hidden="true" />
+        <video poster="/media/hero-accueil-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
+          <source src="/media/hero-accueil.webm" type="video/webm" media="(min-width: 768px)" />
+          <source src="/media/hero-accueil.mp4" type="video/mp4" media="(min-width: 768px)" />
+          <source src="/media/hero-accueil-mobile.webm" type="video/webm" />
+          <source src="/media/hero-accueil-mobile.mp4" type="video/mp4" />
+        </video>
         <div className="veil" aria-hidden="true" />
         <div className="container content">
           <span className="rule rule-lg" aria-hidden="true" />
