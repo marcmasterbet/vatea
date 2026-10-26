@@ -2,6 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import photoHugo from '@/public/media/a-propos/hugo-plateau.jpg';
 import photoCamera from '@/public/media/a-propos/camera.jpg';
+import photoLumiere from '@/public/media/a-propos/lumiere.jpg';
+import photoPlateauCafe from '@/public/media/a-propos/plateau-cafe.jpg';
 import Placeholder from '@/components/Placeholder';
 
 export const metadata = {
@@ -71,18 +73,23 @@ export default function AProposPage() {
             <p>Parmi leurs références, <strong>Luca Salvi, chef opérateur, a participé à INC.</strong> (sélection EnergaCAMERIMAGE 2023) et à <strong>Jupiter</strong> (prix ARRI Rental 2021). <strong>Martin Gérard, monteur et motion designer, a participé à Smoke in the Wind</strong>, récompensé au Berlin Short Film Festival 2026.</p>
             <p><strong>Avec VATEA, vous bénéficiez de cette expertise cinématographique pour vos productions vidéo, avec un interlocuteur unique pour coordonner votre projet de A à Z.</strong></p>
           </div>
-          <div style={{ flex: '1 1 440px', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
-            {/* Photos des métiers : ajouter `src` quand la photo est fournie */}
+          {/* 4 photos qui forment un carré : 2 verticales (4:5) + 2 horizontales (4:3), en damier.
+              Ajouter `src` quand la photo est fournie. */}
+          <div className="damier" style={{ flex: '1 1 440px' }}>
             {[
-              { label: 'caméra', src: photoCamera, alt: 'Cadreur portant une caméra cinéma sur un tournage en extérieur' },
-              { label: 'lumière' },
-              { label: 'son' },
-              { label: 'monteur' },
-            ].map((m) => (m.src ? (
-              <figure key={m.label} className="photo-metier photo-carre">
-                <Image src={m.src} placeholder="blur" quality={82} sizes="(max-width: 768px) 46vw, 320px" alt={m.alt} />
-              </figure>
-            ) : <Placeholder key={m.label} label={`Photo — ${m.label}`} framed ratio="1 / 1" />))}
+              { label: 'caméra', forme: 'v', zone: 'a', src: photoCamera, alt: 'Cadreur portant une caméra cinéma sur un tournage en extérieur' },
+              { label: 'lumière', forme: 'h', zone: 'b', src: photoLumiere, alt: 'Installation des projecteurs sur une structure en extérieur au coucher du soleil' },
+              { label: 'tournage', forme: 'h', zone: 'c', src: photoPlateauCafe, alt: 'Tournage d’une scène dans un café avec une caméra cinéma' },
+              { label: 'monteur', forme: 'v', zone: 'd' },
+            ].map((m) => (
+              <div key={m.label} style={{ gridArea: m.zone }}>
+                {m.src ? (
+                  <figure className="photo-metier photo-damier">
+                    <Image src={m.src} placeholder="blur" quality={82} sizes="(max-width: 768px) 46vw, 320px" alt={m.alt} />
+                  </figure>
+                ) : <Placeholder label={`Photo ${m.forme === 'v' ? 'verticale' : 'horizontale'} — ${m.label}`} framed ratio="auto" style={{ height: '100%' }} />}
+              </div>
+            ))}
           </div>
         </div>
       </section>

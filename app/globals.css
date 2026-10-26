@@ -280,5 +280,7 @@ video.video-pres { object-fit: contain; }
 .photo-metier img { width: 100%; height: auto; display: block; transition: transform .6s ease; }
 .photo-metier:hover img { transform: scale(1.04); }
 
-.photo-carre { aspect-ratio: 1 / 1; border-radius: 20px; box-shadow: none; }
-.photo-carre img { height: 100%; object-fit: cover; }
+/* À propos : damier de 4 photos formant un carré (verticales 4:5 en haut à gauche et en bas à droite) */
+.damier { display: grid; aspect-ratio: 1 / 1; grid-template-columns: 1fr 1fr; grid-template-rows: 3fr 2fr 3fr; grid-template-areas: 'a b' 'a d' 'c d'; gap: 14px; }
+.photo-damier { height: 100%; border-radius: 20px; box-shadow: none; }
+.photo-damier img { height: 100%; object-fit: cover; }
