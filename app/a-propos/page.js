@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import photoHugo from '@/public/media/a-propos/hugo-plateau.jpg';
+import photoPortrait from '@/public/media/a-propos/portrait-hugo.jpg';
 import photoCamera from '@/public/media/a-propos/camera.jpg';
 import photoLumiere from '@/public/media/a-propos/lumiere.jpg';
 import photoPlateauCafe from '@/public/media/a-propos/plateau-cafe.jpg';
@@ -31,7 +32,9 @@ export default function AProposPage() {
             <p className="lead" style={{ maxWidth: 640, marginBottom: 22 }}>Derrière chaque vidéo, il y a un message à transmettre. Derrière VATEA, il y a une conviction : chaque projet mérite une équipe adaptée, une écoute attentive et un accompagnement humain.</p>
             <p className="gold" style={{ fontFamily: 'var(--font-cinzel), serif', fontWeight: 500, fontSize: 'clamp(18px, 1.6vw, 23px)', lineHeight: 1.4 }}>Je suis Hugo Elvira. Bienvenue dans mon univers.</p>
           </div>
-          <div className="gold-frame" style={{ flex: '1 1 340px', maxWidth: 460 }}><Placeholder label="Portrait — Hugo Elvira" ratio="4 / 5" /></div>
+          <div className="gold-frame" style={{ flex: '1 1 300px', maxWidth: 420 }}>
+            <Image src={photoPortrait} placeholder="blur" priority quality={90} sizes="(max-width: 768px) 92vw, 420px" alt="Portrait de Hugo Elvira, fondateur de VATEA" className="photo-cadre" />
+          </div>
         </div>
       </section>
 
