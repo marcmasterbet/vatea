@@ -59,14 +59,13 @@ export default function AProposPage() {
       <section className="section" aria-labelledby="titre-specialistes">
         <div className="container split">
           <div className="txt" style={{ flex: '1 1 480px' }}>
-            <h2 id="titre-specialistes" className="h2" style={{ marginBottom: 22 }}>Des spécialistes réunis <span className="gold">autour de votre projet</span></h2>
-            <p>Image, son, éclairage, montage, animation : chaque discipline exige un véritable savoir-faire.</p>
-            <p>Je constitue une équipe sur mesure selon la nature et les exigences de votre production.</p>
-            <p>La majorité des professionnels avec lesquels je travaille sont diplômés en cinéma ou en audiovisuel. Certains ont également été récompensés dans des festivals de courts métrages.</p>
-            <p>Vous bénéficiez ainsi des compétences nécessaires à votre projet, avec un interlocuteur unique pour coordonner l'ensemble.</p>
+            <h2 id="titre-specialistes" className="h2" style={{ marginBottom: 22 }}>Des professionnels du cinéma réunis <span className="gold">autour de votre projet</span></h2>
+            <p>Je m'appuie sur une équipe de spécialistes de l'audiovisuel : chef opérateur, ingénieur du son, monteur et motion designer. Selon les profils, ils comptent entre <strong>5 et 10 ans d'expérience</strong> dans le cinéma, le documentaire et la publicité.</p>
+            <p>Parmi leurs références, <strong>Luca Salvi, chef opérateur, a participé à INC.</strong> (sélection EnergaCAMERIMAGE 2023) et à <strong>Jupiter</strong> (prix ARRI Rental 2021). <strong>Martin Gérard, monteur et motion designer, a participé à Smoke in the Wind</strong>, récompensé au Berlin Short Film Festival 2026.</p>
+            <p><strong>Avec VATEA, vous bénéficiez de cette expertise cinématographique pour vos productions vidéo, avec un interlocuteur unique pour coordonner votre projet de A à Z.</strong></p>
           </div>
           <div style={{ flex: '1 1 440px', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
-            {['image', 'son', 'éclairage', 'montage'].map((t) => <Placeholder key={t} label={`Photo — ${t}`} framed ratio="1 / 1" />)}
+            {['chef opérateur', 'ingénieur du son', 'monteur', 'motion designer'].map((t) => <Placeholder key={t} label={`Photo — ${t}`} framed ratio="1 / 1" />)}
           </div>
         </div>
       </section>
