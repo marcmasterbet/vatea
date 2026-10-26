@@ -264,9 +264,12 @@ video.video-pres { object-fit: contain; }
 .cookies-lien { margin: 14px 0 0; font-size: 13px; text-align: center; }
 .cookies-lien a { color: var(--texte-2); text-decoration: underline; text-underline-offset: 3px; }
 
-/* Accueil, téléphone : la vidéo (format cinéma 2.39:1) est montrée en entier en haut, sans zoom excessif */
+/* Accueil, téléphone : la vidéo (format cinéma 2.39:1) est montrée en entier sous le menu, le texte juste en dessous */
 @media (max-width: 767px) {
-  .hero-video video { inset: 0 0 auto 0; height: auto; aspect-ratio: 2048 / 858; object-fit: cover; top: clamp(110px, 18vh, 170px); 
-    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 80%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 80%, transparent 100%); }
-  .hero-video .veil { background: linear-gradient(180deg, rgba(18, 18, 18, 0) 0%, rgba(18, 18, 18, 0) 40%, rgba(18, 18, 18, .8) 58%, var(--noir) 72%); }
+  .hero-video { display: block; height: auto; min-height: 0; max-height: none; padding-top: 88px; }
+  .hero-video video { position: relative; inset: auto; display: block; width: 100%; height: auto; aspect-ratio: 2048 / 858; object-fit: cover;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 78%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 12%, #000 78%, transparent 100%); }
+  .hero-video .veil { display: none; }
+  .hero-video .content { padding-top: 22px; padding-bottom: 40px; }
 }
+
