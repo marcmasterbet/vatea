@@ -1,10 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import photoHugo from '@/public/media/a-propos/hugo-plateau.jpg';
-import photoCamera from '@/public/media/a-propos/camera.jpg';
-import photoLumiere from '@/public/media/a-propos/lumiere.jpg';
-import photoSon from '@/public/media/a-propos/son.jpg';
-import photoMonteur from '@/public/media/a-propos/monteur.jpg';
 import Placeholder from '@/components/Placeholder';
 
 export const metadata = {
@@ -12,13 +8,6 @@ export const metadata = {
   description: 'Derrière VATEA, une conviction : chaque projet mérite une équipe adaptée, une écoute attentive et un accompagnement humain.',
   alternates: { canonical: '/a-propos' },
 };
-
-const METIERS = [
-  { src: photoCamera, label: 'Caméra', alt: 'Caméra ARRI Alexa équipée sur un bras, en tournage en montagne' },
-  { src: photoLumiere, label: 'Lumière', alt: 'Deux grandes boîtes à lumière sur pieds, au coucher du soleil' },
-  { src: photoSon, label: 'Son', alt: 'Micro canon avec bonnette sur une perche' },
-  { src: photoMonteur, label: 'Montage', alt: 'Timeline de montage vidéo à l’écran' },
-];
 
 const VALUES = [
   { num: 'I', title: 'L\'écoute avant la technique.', text: 'Je prends le temps de comprendre votre activité, vos attentes et les personnes auxquelles vous souhaitez vous adresser.' },
@@ -81,18 +70,8 @@ export default function AProposPage() {
             <p>Parmi leurs références, <strong>Luca Salvi, chef opérateur, a participé à INC.</strong> (sélection EnergaCAMERIMAGE 2023) et à <strong>Jupiter</strong> (prix ARRI Rental 2021). <strong>Martin Gérard, monteur et motion designer, a participé à Smoke in the Wind</strong>, récompensé au Berlin Short Film Festival 2026.</p>
             <p><strong>Avec VATEA, vous bénéficiez de cette expertise cinématographique pour vos productions vidéo, avec un interlocuteur unique pour coordonner votre projet de A à Z.</strong></p>
           </div>
-          {/* Photos entières (sans recadrage), en mosaïque décalée : colonne 1 = caméra + son, colonne 2 = lumière + montage */}
-          <div className="mosaique" style={{ flex: '1 1 440px' }}>
-            {[[METIERS[0], METIERS[2]], [METIERS[1], METIERS[3]]].map((col, i) => (
-              <div className="mosaique-col" key={i}>
-                {col.map((m) => (
-                  <figure key={m.label} className="photo-metier">
-                    <Image src={m.src} placeholder="blur" quality={82} sizes="(max-width: 768px) 46vw, 320px" alt={m.alt} />
-                    <figcaption>{m.label}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            ))}
+          <div style={{ flex: '1 1 440px', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 14 }}>
+            {['caméra', 'lumière', 'son', 'monteur'].map((t) => <Placeholder key={t} label={`Photo — ${t}`} framed ratio="1 / 1" />)}
           </div>
         </div>
       </section>
