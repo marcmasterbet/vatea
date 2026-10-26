@@ -126,8 +126,13 @@ p { margin: 0; }
 
 /* ---------- Bandeau logos ---------- */
 .logos { overflow: hidden; }
-.logo-track { display: flex; gap: 24px; width: max-content; animation: defile 40s linear infinite; }
-.logo-tile { width: 200px; height: 112px; flex: 0 0 auto; border-radius: 16px; border: 1px dashed #5a5a5a; background: #1c1c1c; display: flex; align-items: center; justify-content: center; color: #9e9e9e; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.logos { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.logo-track { display: flex; align-items: center; width: max-content; margin: 0; padding: 0; list-style: none; animation: defile 45s linear infinite; }
+.logos:hover .logo-track { animation-play-state: paused; }
+.logo-item { flex: 0 0 auto; height: 96px; display: flex; align-items: center; padding: 0 clamp(28px, 3.4vw, 48px); }
+.logo-item img { display: block; max-width: none; }
+@media (prefers-reduced-motion: reduce) { .logo-track { animation-duration: 120s; } }
+
 @keyframes defile { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
 /* ---------- FAQ ---------- */
@@ -258,3 +263,10 @@ video.video-pres { object-fit: contain; }
 .interrupteur input:focus-visible + span { outline: 2px solid var(--or-clair); outline-offset: 2px; }
 .cookies-lien { margin: 14px 0 0; font-size: 13px; text-align: center; }
 .cookies-lien a { color: var(--texte-2); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Accueil, téléphone : la vidéo (format cinéma 2.39:1) est montrée en entier en haut, sans zoom excessif */
+@media (max-width: 767px) {
+  .hero-video video { inset: 0 0 auto 0; height: auto; aspect-ratio: 2048 / 858; object-fit: cover; top: clamp(110px, 18vh, 170px); 
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 80%, transparent 100%); mask-image: linear-gradient(180deg, transparent 0%, #000 15%, #000 80%, transparent 100%); }
+  .hero-video .veil { background: linear-gradient(180deg, rgba(18, 18, 18, 0) 0%, rgba(18, 18, 18, 0) 40%, rgba(18, 18, 18, .8) 58%, var(--noir) 72%); }
+}

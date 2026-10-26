@@ -23,7 +23,24 @@ const faqJsonLd = {
   mainEntity: FAQ.map((f) => ({ '@type': 'Question', name: f.q.replace(/^\d+\.\s*/, ''), acceptedAnswer: { '@type': 'Answer', text: f.a } })),
 };
 
-const LOGOS = Array.from({ length: 6 }, (_, i) => `Logo client ${i + 1}`);
+// Logos clients (gris, fond transparent) — public/media/logos. Taille calculée pour un poids visuel égal.
+const LOGOS = [
+  ['uclouvain', 'UCLouvain', 716, 112],
+  ['tsf', 'TSF', 603, 240],
+  ['milano-cortina-2026', 'Milano Cortina 2026', 303, 240],
+  ['iris-production-groupe', 'Iris Production Groupe', 289, 240],
+  ['client-rv', 'Client (logo RV)', 273, 240],
+  ['creative-district', 'Creative District', 720, 192],
+  ['bookr', 'Bookr', 240, 240],
+  ['black-town', 'Black Town', 308, 240],
+  ['autoworld-brussels', 'Autoworld Brussels', 720, 232],
+].map(([slug, nom, w, h]) => {
+  const ratio = w / h, aire = 5200;
+  let hh = Math.min(76, Math.sqrt(aire / ratio));
+  let ww = hh * ratio;
+  if (ww > 190) { ww = 190; hh = ww / ratio; }
+  return { slug, nom, w: Math.round(ww), h: Math.round(hh) };
+});
 
 export default function HomePage() {
   return (
@@ -31,11 +48,11 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
 
       {/* HERO : vidéo d'arrière-plan en boucle (objectif en gros plan, fournie le 26/10).
-          Ordinateur : 1920 px (WebM puis MP4) · téléphone : version recadrée au centre, plus légère. */}
+          Ordinateur : fichier d'origine 2048 px, sans réencodage (netteté maximale) · téléphone : version recadrée au centre, plus légère. */}
       <section className="hero-video" aria-labelledby="titre-hero">
         <video poster="/media/hero-accueil-poster.jpg" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
-          <source src="/media/hero-accueil.webm" type="video/webm" media="(min-width: 768px)" />
           <source src="/media/hero-accueil.mp4" type="video/mp4" media="(min-width: 768px)" />
+          <source src="/media/hero-accueil.webm" type="video/webm" media="(min-width: 768px)" />
           <source src="/media/hero-accueil-mobile.webm" type="video/webm" />
           <source src="/media/hero-accueil-mobile.mp4" type="video/mp4" />
         </video>
@@ -102,9 +119,14 @@ export default function HomePage() {
           </div>
         </div>
         <div className="logos" style={{ marginTop: 'clamp(36px, 4.5vw, 60px)' }}>
-          <div className="logo-track">
-            {[...LOGOS, ...LOGOS].map((l, i) => <div className="logo-tile" key={i} role="img" aria-label={l}>{l}</div>)}
-          </div>
+          <ul className="logo-track" aria-label="Ils nous ont fait confiance">
+            {[...LOGOS, ...LOGOS].map((l, i) => (
+              <li className="logo-item" key={i} aria-hidden={i >= LOGOS.length ? 'true' : undefined}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/media/logos/${l.slug}.webp`} alt={i >= LOGOS.length ? '' : l.nom} width={l.w} height={l.h} style={{ '--w': `${l.w}px` }} decoding="async" />
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
