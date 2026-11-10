@@ -1,7 +1,9 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import CtaBox from '@/components/CtaBox';
 import Faq from '@/components/Faq';
 import Placeholder from '@/components/Placeholder';
+import photoPreparation from '@/public/media/accueil-preparation-tournage.jpg';
 import VideoPresentation from '@/components/VideoPresentation';
 import { CTA_DEVIS, VIDEO_PRESENTATION } from '@/lib/site';
 
@@ -87,7 +89,11 @@ export default function HomePage() {
             <p className="lead" style={{ color: 'var(--texte-2)', marginBottom: 28 }}>Scénario, tournage, équipe, budget : produire une vidéo d'entreprise mobilise plusieurs expertises. Sans une bonne coordination, votre message risque de perdre son impact.</p>
             <a className="btn btn-ghost" href="#contact">Faire étudier mon projet vidéo</a>
           </div>
-          <div style={{ flex: '1 1 440px' }}><Placeholder label="Photo — préparation / tournage" framed /></div>
+          <div style={{ flex: '1 1 440px' }}>
+            <figure className="photo-metier" style={{ margin: 0 }}>
+              <Image src={photoPreparation} placeholder="blur" quality={85} sizes="(max-width: 768px) 92vw, 600px" alt="Équipe de tournage en extérieur dans la brume d’automne : caméra, clap et comédien" />
+            </figure>
+          </div>
         </div>
       </section>
 
